@@ -6,6 +6,7 @@ from backend.models.document import Document
 from backend.utils.hashing import calcular_hash
 from backend.utils.pdf import extraer_texto_pdf
 from backend.utils.docx import extraer_texto_docx
+from backend.utils.html import extraer_texto_html
 from backend.utils.chunking import dividir_texto, crear_chunks_con_metadata
 
 
@@ -69,7 +70,6 @@ def eliminar_documento(db: Session, documento_id: int, base_dir: str = "./docume
     if not doc:
         return False
 
-    # Eliminar archivo físico si existe en el directorio de documentos
     ruta_archivo = os.path.join(base_dir, doc.name)
     if os.path.exists(ruta_archivo):
         try:
@@ -77,7 +77,6 @@ def eliminar_documento(db: Session, documento_id: int, base_dir: str = "./docume
         except OSError:
             pass
 
-    # Eliminar registro de SQLite
     db.delete(doc)
     db.commit()
     return True
@@ -89,9 +88,9 @@ def procesar_documento(
     db: Session
 ) -> Dict[str, Any]:
     """
-    Orquesta el flujo completo de procesamiento de un documento:
-    1. Detecta tipo (.pdf / .docx)
-    2. Extrae el texto por páginas o párrafos
+    Orquesta el flujo completo de procesamiento de un documento (.pdf, .docx, .html, .htm):
+    1. Detecta tipo (.pdf, .docx, .html, .htm)
+    2. Extrae el texto por páginas, párrafos o secciones HTML
     3. Calcula el hash SHA-256
     4. Fragmenta el texto en chunks con metadatos
     5. Guarda/actualiza el registro en SQLite
@@ -109,8 +108,11 @@ def procesar_documento(
     elif extension == ".docx":
         tipo = "docx"
         paginas = extraer_texto_docx(ruta_archivo)
+    elif extension in [".html", ".htm"]:
+        tipo = "html"
+        paginas = extraer_texto_html(ruta_archivo)
     else:
-        raise ValueError(f"Formato no soportado: {extension}. Solo se permiten archivos .pdf y .docx")
+        raise ValueError(f"Formato no soportado: {extension}. Solo se permiten archivos .pdf, .docx, .html y .htm")
 
     # Calcular hash SHA-256 y tamaño
     hash_val = calcular_hash(ruta_archivo)

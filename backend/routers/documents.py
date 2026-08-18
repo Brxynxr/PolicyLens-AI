@@ -42,7 +42,7 @@ def upload_document(
     db: Session = Depends(get_db)
 ):
     """
-    Subir un documento (.pdf o .docx), guardarlo físicamente en ./documents/,
+    Subir un documento (.pdf, .docx, .html, .htm), guardarlo físicamente en ./documents/,
     extraer su texto, fragmentarlo en chunks con metadatos y registrarlo en SQLite.
     """
     if not file.filename:
@@ -52,10 +52,10 @@ def upload_document(
         )
 
     extension = os.path.splitext(file.filename)[1].lower()
-    if extension not in [".pdf", ".docx"]:
+    if extension not in [".pdf", ".docx", ".html", ".htm"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Formato no permitido: '{extension}'. Solo se permiten archivos .pdf y .docx"
+            detail=f"Formato no permitido: '{extension}'. Solo se permiten archivos .pdf, .docx, .html y .htm"
         )
 
     _asegurar_directorio()

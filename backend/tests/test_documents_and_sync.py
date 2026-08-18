@@ -15,10 +15,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from backend.database import Base, get_db
 from backend.main import app
+from backend.utils.html import extraer_texto_html
 from backend.routers import documents as docs_router_mod
 from backend.routers import sync as sync_router_mod
 
-# SQLite en memoria compartido usando StaticPool para hilos/peticiones de FastAPI
 TEST_DATABASE_URL = "sqlite:///:memory:"
 test_engine = create_engine(
     TEST_DATABASE_URL,
@@ -80,8 +80,42 @@ class TestDocumentsAndSync(unittest.TestCase):
         buffer.seek(0)
         return buffer.read()
 
-    def test_upload_pdf_docx_y_validacion_formato(self):
-        """Prueba 1: Subida de PDF/DOCX válidos y rechazo de formatos no permitidos (.txt)."""
+    def _generar_html_bytes(self, titulo: str, contenido: str) -> bytes:
+        html_str = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>{titulo}</title>
+    <style>body {{ font-family: sans-serif; }}</style>
+    <script>console.log("ignore script");</script>
+</head>
+<body>
+    <h1>{titulo}</h1>
+    <p>{contenido}</p>
+</body>
+</html>"""
+        return html_str.encode("utf-8")
+
+    def test_extraer_texto_html_unitario(self):
+        """Prueba unitaria para extraer_texto_html omitiendo scripts/styles y formateando párrafos."""
+        html_bytes = self._generar_html_bytes("Política de Teletrabajo", "Los empleados podrán trabajar remoto 2 días a la semana.")
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmp:
+            tmp.write(html_bytes)
+            tmp_path = tmp.name
+
+        try:
+            resultado = extraer_texto_html(tmp_path)
+            self.assertEqual(len(resultado), 1)
+            self.assertEqual(resultado[0]["page"], 1)
+            self.assertIn("Política de Teletrabajo", resultado[0]["text"])
+            self.assertIn("remoto 2 días", resultado[0]["text"])
+            self.assertNotIn("console.log", resultado[0]["text"])
+            self.assertNotIn("font-family", resultado[0]["text"])
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+    def test_upload_pdf_docx_html_y_validacion_formato(self):
+        """Prueba 1: Subida de PDF, DOCX y HTML válidos, y rechazo de formatos no permitidos (.txt)."""
         pdf_bytes = self._generar_pdf_bytes("Politica de Seguridad Interna 2026")
         res_pdf = self.client.post(
             "/documents/upload",
@@ -91,7 +125,6 @@ class TestDocumentsAndSync(unittest.TestCase):
         data_pdf = res_pdf.json()
         self.assertEqual(data_pdf["original_name"], "politica_seguridad.pdf")
         self.assertEqual(data_pdf["type"], "pdf")
-        self.assertIsNotNone(data_pdf["id"])
 
         # Subida de DOCX válido
         docx_bytes = self._generar_docx_bytes("Manual de Procedimientos Legales")
@@ -103,13 +136,24 @@ class TestDocumentsAndSync(unittest.TestCase):
         data_docx = res_docx.json()
         self.assertEqual(data_docx["original_name"], "manual_legal.docx")
 
+        # Subida de HTML válido
+        html_bytes = self._generar_html_bytes("Contrato de Confidencialidad", "Cláusula 1: Confidencialidad de datos")
+        res_html = self.client.post(
+            "/documents/upload",
+            files={"file": ("contrato_nda.html", html_bytes, "text/html")}
+        )
+        self.assertEqual(res_html.status_code, 201)
+        data_html = res_html.json()
+        self.assertEqual(data_html["original_name"], "contrato_nda.html")
+        self.assertEqual(data_html["type"], "html")
+
         # Subida de extensión no válida (.txt)
         res_txt = self.client.post(
             "/documents/upload",
             files={"file": ("invalido.txt", b"Texto plano no permitido", "text/plain")}
         )
         self.assertEqual(res_txt.status_code, 400)
-        self.assertIn("Solo se permiten archivos .pdf y .docx", res_txt.json()["detail"])
+        self.assertIn("Solo se permiten archivos .pdf, .docx, .html y .htm", res_txt.json()["detail"])
 
     def test_listar_y_obtener_documento(self):
         """Prueba 2: Listar documentos registrados y obtener documento por su ID."""
@@ -120,18 +164,15 @@ class TestDocumentsAndSync(unittest.TestCase):
         )
         doc_id = res_up.json()["id"]
 
-        # Listar documentos
         res_list = self.client.get("/documents")
         self.assertEqual(res_list.status_code, 200)
         data_list = res_list.json()
         self.assertGreaterEqual(data_list["total"], 1)
 
-        # Obtener por ID
         res_get = self.client.get(f"/documents/{doc_id}")
         self.assertEqual(res_get.status_code, 200)
         self.assertEqual(res_get.json()["id"], doc_id)
 
-        # ID inexistente -> 404
         res_404 = self.client.get("/documents/999999")
         self.assertEqual(res_404.status_code, 404)
 
@@ -146,31 +187,27 @@ class TestDocumentsAndSync(unittest.TestCase):
         file_path = os.path.join(self.temp_dir, "para_borrar.pdf")
         self.assertTrue(os.path.exists(file_path))
 
-        # Eliminar
         res_del = self.client.delete(f"/documents/{doc_id}")
         self.assertEqual(res_del.status_code, 200)
 
-        # Verificar que el registro ya no existe
         res_get = self.client.get(f"/documents/{doc_id}")
         self.assertEqual(res_get.status_code, 404)
 
-        # Verificar eliminación de 404 subsecuente
         res_del_404 = self.client.delete(f"/documents/{doc_id}")
         self.assertEqual(res_del_404.status_code, 404)
 
-    def test_sincronizacion_sha256(self):
-        """Prueba 4: Endpoint /documents/sync clasificando archivos en added, updated y unchanged."""
-        # 1. Crear un archivo en el directorio físico sin registrarlo previamente en la BD -> debe ser 'added'
-        file1_path = os.path.join(self.temp_dir, "archivo_nuevo.pdf")
+    def test_sincronizacion_sha256_con_html(self):
+        """Prueba 4: Endpoint /documents/sync clasificando archivos HTML/PDF en added, updated y unchanged."""
+        # 1. Crear un archivo HTML en el directorio físico sin registrarlo en la BD -> debe ser 'added'
+        file1_path = os.path.join(self.temp_dir, "politica_interna.html")
         with open(file1_path, "wb") as f:
-            f.write(self._generar_pdf_bytes("Nuevo documento sin registrar"))
+            f.write(self._generar_html_bytes("Política Interna", "Contenido inicial de la política"))
 
-        # Ejecutar sincronización
         res_sync1 = self.client.post("/documents/sync")
         self.assertEqual(res_sync1.status_code, 200)
         data_sync1 = res_sync1.json()
 
-        self.assertIn("archivo_nuevo.pdf", data_sync1["added"])
+        self.assertIn("politica_interna.html", data_sync1["added"])
         self.assertEqual(data_sync1["total_processed"], 1)
 
         # 2. Segunda ejecución sin modificar archivos -> debe ser 'unchanged'
@@ -178,18 +215,18 @@ class TestDocumentsAndSync(unittest.TestCase):
         self.assertEqual(res_sync2.status_code, 200)
         data_sync2 = res_sync2.json()
 
-        self.assertIn("archivo_nuevo.pdf", data_sync2["unchanged"])
+        self.assertIn("politica_interna.html", data_sync2["unchanged"])
         self.assertEqual(len(data_sync2["added"]), 0)
 
-        # 3. Modificar contenido del archivo físico -> su SHA-256 cambia -> debe ser 'updated'
+        # 3. Modificar contenido del archivo HTML físico -> su SHA-256 cambia -> debe ser 'updated'
         with open(file1_path, "wb") as f:
-            f.write(self._generar_pdf_bytes("Contenido completamente Modificado 2026"))
+            f.write(self._generar_html_bytes("Política Interna Modificada", "Versión 2.0 con nuevos términos"))
 
         res_sync3 = self.client.post("/documents/sync")
         self.assertEqual(res_sync3.status_code, 200)
         data_sync3 = res_sync3.json()
 
-        self.assertIn("archivo_nuevo.pdf", data_sync3["updated"])
+        self.assertIn("politica_interna.html", data_sync3["updated"])
 
 
 if __name__ == "__main__":

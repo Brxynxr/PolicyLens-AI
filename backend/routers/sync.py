@@ -24,7 +24,7 @@ def _asegurar_directorio():
 def sync_documents(db: Session = Depends(get_db)):
     """
     Sincroniza los documentos en la carpeta física ./documents/ con la base de datos SQLite:
-    - Escanea archivos .pdf y .docx.
+    - Escanea archivos .pdf, .docx, .html y .htm.
     - Calcula el hash SHA-256 de cada uno.
     - Identifica archivos nuevos (added), modificados (updated) y sin cambios (unchanged).
     - Procesa únicamente los archivos nuevos y modificados.
@@ -45,7 +45,7 @@ def sync_documents(db: Session = Depends(get_db)):
 
     archivos_fisicos = [
         f for f in os.listdir(DOCUMENTS_DIR)
-        if os.path.isfile(os.path.join(DOCUMENTS_DIR, f)) and f.lower().endswith((".pdf", ".docx"))
+        if os.path.isfile(os.path.join(DOCUMENTS_DIR, f)) and f.lower().endswith((".pdf", ".docx", ".html", ".htm"))
     ]
 
     for filename in archivos_fisicos:
