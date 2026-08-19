@@ -131,6 +131,7 @@ def procesar_documento(
 
     # Generar chunks con metadatos para ChromaDB / RAG
     todos_los_chunks: List[Dict[str, Any]] = []
+    chunk_offset = 0
     for pag in paginas:
         num_pagina = pag.get("page", 1)
         texto_pagina = pag.get("text", "")
@@ -143,8 +144,10 @@ def procesar_documento(
             document_name=doc_orm.name,
             page=num_pagina,
             section=f"Página {num_pagina}",
-            chunks=raw_chunks
+            chunks=raw_chunks,
+            chunk_offset=chunk_offset
         )
+        chunk_offset += len(raw_chunks)
         todos_los_chunks.extend(chunks_con_meta)
 
     return {

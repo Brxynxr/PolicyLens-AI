@@ -1,17 +1,19 @@
 import os
+from dotenv import load_dotenv
+
+# Cargar variables de ANTES de cualquier import que use os.getenv()
+load_dotenv()
+
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 
 from backend.database import engine, Base
 import backend.models  # noqa: F401
 from backend.routers.documents import router as documents_router
 from backend.routers.sync import router as sync_router
-
-# Cargar variables de entorno desde .env si existe
-load_dotenv()
+from backend.routers.chat import router as chat_router
 
 
 @asynccontextmanager
@@ -46,6 +48,7 @@ app.add_middleware(
 # Registrar Routers de la API
 app.include_router(documents_router, prefix="/documents", tags=["Documents"])
 app.include_router(sync_router, prefix="/documents", tags=["Sync"])
+app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 
 
 @app.get("/")

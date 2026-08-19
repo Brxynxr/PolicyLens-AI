@@ -208,19 +208,7 @@ export default function ChatPage() {
       {/* Main chat window container */}
       <div className="flex flex-col flex-1 bg-white rounded-2xl border border-brand-200 overflow-hidden relative shadow-xs animate-scale-up">
         
-        {/* Mock Environment Info Header */}
-        <div className="px-5 py-3.5 border-b border-brand-200 bg-brand-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gold-500"></span>
-            </span>
-            <span className="text-xs font-bold text-neutral-800 uppercase tracking-wider">Modo Simulación RAG</span>
-          </div>
-          <p className="text-[11px] font-medium text-neutral-500 max-w-md">
-            Prueba a preguntar: <span className="underline italic text-gold-600">"vacaciones"</span>, <span className="underline italic text-gold-600">"trabajo remoto"</span> o <span className="underline italic text-gold-600">"seguridad"</span>.
-          </p>
-        </div>
+
 
         {/* Chat Feed */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">

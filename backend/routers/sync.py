@@ -7,11 +7,14 @@ from backend.database import get_db
 from backend.models.document import Document
 from backend.utils.hashing import calcular_hash
 from backend.services.documents import procesar_documento
+from backend.services.rag import RAGService
 from backend.schemas.document import SyncSummaryResponse, SyncFileDetail
 
 router = APIRouter()
 
 DOCUMENTS_DIR = "./documents"
+
+rag_service = RAGService()
 
 
 def _asegurar_directorio():
@@ -57,11 +60,13 @@ def sync_documents(db: Session = Depends(get_db)):
 
             if doc_bd is None:
                 # Archivo nuevo no registrado previamente en la BD
-                procesar_documento(
+                resultado = procesar_documento(
                     ruta_archivo=file_path,
                     nombre_original=filename,
                     db=db
                 )
+                if resultado["chunks"]:
+                    rag_service.indexar_documento(resultado["chunks"])
                 added.append(filename)
                 details.append(SyncFileDetail(
                     filename=filename,
@@ -72,11 +77,15 @@ def sync_documents(db: Session = Depends(get_db)):
 
             elif doc_bd.hash != current_hash:
                 # El contenido cambió (hash SHA-256 diferente)
-                procesar_documento(
+                # Eliminar chunks antiguos de ChromaDB
+                rag_service.eliminar_documento(doc_bd.id)
+                resultado = procesar_documento(
                     ruta_archivo=file_path,
                     nombre_original=filename,
                     db=db
                 )
+                if resultado["chunks"]:
+                    rag_service.indexar_documento(resultado["chunks"])
                 updated.append(filename)
                 details.append(SyncFileDetail(
                     filename=filename,

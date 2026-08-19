@@ -1,10 +1,10 @@
 import os
-import shutil
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.models.document import Document
 from backend.schemas.document import DocumentResponse, DocumentListResponse
 from backend.services.documents import (
     listar_documentos,
@@ -12,10 +12,15 @@ from backend.services.documents import (
     eliminar_documento,
     procesar_documento,
 )
+from backend.services.rag import RAGService
 
 router = APIRouter()
 
 DOCUMENTS_DIR = "./documents"
+MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+rag_service = RAGService()
 
 
 def _asegurar_directorio():
@@ -37,7 +42,7 @@ def get_documents(db: Session = Depends(get_db)):
 
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-def upload_document(
+async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -62,14 +67,31 @@ def upload_document(
     file_path = os.path.join(DOCUMENTS_DIR, file.filename)
 
     try:
+        content = await file.read()
+        if len(content) > MAX_FILE_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El archivo excede el tamaño máximo de {MAX_FILE_SIZE_MB}MB."
+            )
+
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(content)
+
+        # Si ya existe un documento con el mismo nombre, eliminar sus chunks antiguos
+        doc_existente = db.query(Document).filter(
+            Document.name == file.filename,
+            Document.status != "deleted"
+        ).first()
+        if doc_existente:
+            rag_service.eliminar_documento(doc_existente.id)
 
         res = procesar_documento(
             ruta_archivo=file_path,
             nombre_original=file.filename,
             db=db
         )
+        if res["chunks"]:
+            rag_service.indexar_documento(res["chunks"])
         return DocumentResponse.model_validate(res["document"])
     except ValueError as ve:
         if os.path.exists(file_path):
@@ -98,8 +120,11 @@ def get_document_by_id(document_id: int, db: Session = Depends(get_db)):
 @router.delete("/{document_id}", status_code=status.HTTP_200_OK)
 def delete_document_by_id(document_id: int, db: Session = Depends(get_db)):
     """
-    Eliminar un documento por su ID (elimina el registro de la BD y el archivo físico).
+    Eliminar un documento por su ID (elimina el registro de la BD, chunks de ChromaDB y el archivo físico).
     """
+    # Eliminar chunks de ChromaDB antes de eliminar de SQLite
+    rag_service.eliminar_documento(document_id)
+
     exito = eliminar_documento(db, document_id, base_dir=DOCUMENTS_DIR)
     if not exito:
         raise HTTPException(

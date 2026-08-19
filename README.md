@@ -31,13 +31,15 @@ Sistema RAG que:
 
 **IA:**
 - Proveedor LLM compatible con OpenAI (desacoplado)
+- Proveedor de Embeddings compatible con OpenAI (desacoplado)
+- Configurado con NVIDIA NIM (meta/llama-3.1-8b-instruct + nvidia/nv-embedqa-e5-v5)
 
 ## Instalación
 
 ```bash
 # Clonar el repositorio
 git clone <url-del-repositorio>
-cd proyecto3
+cd PolicyLens-AI
 
 # Crear entorno virtual
 python3 -m venv .venv
@@ -48,11 +50,10 @@ pip install -r requirements.txt
 
 # Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus API keys
+# Editar .env con tus API keys (LLM_API_KEY, LLM_BASE_URL, etc.)
 
-# Ejecutar backend
-cd backend
-uvicorn main:app --reload
+# Ejecutar backend (desde la raíz del proyecto)
+uvicorn backend.main:app --reload
 
 # Ejecutar frontend (en otra terminal)
 cd frontend
@@ -63,7 +64,7 @@ npm run dev
 ## Estructura del Proyecto
 
 ```
-proyecto3/
+PolicyLens-AI/
 ├── backend/
 │   ├── main.py              # Punto de entrada FastAPI
 │   ├── database.py          # Configuración SQLite
@@ -109,8 +110,21 @@ proyecto3/
 | DELETE | `/documents/{id}` | Eliminar documento |
 | POST | `/documents/sync` | Sincronizar documentos |
 | POST | `/chat` | Enviar pregunta |
-| GET | `/conversations` | Listar conversaciones |
-| GET | `/conversations/{id}` | Obtener conversación |
+| GET | `/chat/conversations` | Listar conversaciones |
+| GET | `/chat/conversations/{id}` | Obtener conversación |
+
+## Variables de Entorno
+
+El archivo `.env` debe contener:
+
+```
+LLM_API_KEY=nvapi-...
+LLM_BASE_URL=https://integrate.api.nvidia.com/v1
+LLM_MODEL=meta/llama-3.1-8b-instruct
+EMBEDDING_MODEL=nvidia/nv-embedqa-e5-v5
+DATABASE_URL=sqlite:///./sql_app.db
+CORS_ORIGINS=http://localhost:5173
+```
 
 ## Desarrollado por
 

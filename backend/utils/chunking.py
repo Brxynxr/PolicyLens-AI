@@ -42,7 +42,8 @@ def crear_chunks_con_metadata(
     document_name: str,
     page: Optional[int],
     section: Optional[str],
-    chunks: List[str]
+    chunks: List[str],
+    chunk_offset: int = 0
 ) -> List[Dict[str, Any]]:
     """
     Asigna metadatos estructurados a cada chunk de texto.
@@ -52,6 +53,7 @@ def crear_chunks_con_metadata(
     :param page: Número de página (1-indexed) o None.
     :param section: Nombre o título de la sección si existe.
     :param chunks: Lista de fragmentos de texto devueltos por `dividir_texto`.
+    :param chunk_offset: Índice base para numerar los chunks (para evitar duplicados entre páginas).
     :return: Lista de diccionarios con la estructura requerida por ChromaDB y el flujo RAG.
     """
     chunks_con_metadata: List[Dict[str, Any]] = []
@@ -62,7 +64,7 @@ def crear_chunks_con_metadata(
             "document_name": document_name,
             "page": page if page is not None else 1,
             "section": section if section else "General",
-            "chunk_index": idx,
+            "chunk_index": chunk_offset + idx,
             "content": content
         })
 
