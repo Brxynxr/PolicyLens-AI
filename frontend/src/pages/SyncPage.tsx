@@ -7,21 +7,6 @@ export default function SyncPage() {
   const [result, setResult] = useState<SyncSummaryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSync = async () => {
-    setSyncing(true)
-    setError(null)
-    setResult(null)
-
-    try {
-      const data = await sincronizarDocumentos()
-      setResult(data)
-    } catch {
-      setError('Ocurrió un error inesperado al intentar sincronizar los directorios.')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
   const getStatusColor = (status: SyncFileDetail['status']) => {
     switch (status) {
       case 'added': return 'bg-success/10 text-success border-success/20'
@@ -37,6 +22,21 @@ export default function SyncPage() {
       case 'updated': return 'Modificado'
       case 'unchanged': return 'Sin Cambios'
       case 'error': return 'Error'
+    }
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setError(null)
+    setResult(null)
+
+    try {
+      const data = await sincronizarDocumentos()
+      setResult(data)
+    } catch {
+      setError('Ocurrió un error inesperado al intentar sincronizar los directorios.')
+    } finally {
+      setSyncing(false)
     }
   }
 

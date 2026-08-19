@@ -60,7 +60,7 @@ export default function DocumentsPage() {
           <div>
             <h4 className="text-xs font-bold text-neutral-800 uppercase tracking-wide">Base Documental Simulada</h4>
             <p className="text-2xs text-neutral-500 mt-0.5 leading-relaxed font-semibold">
-              Los archivos subidos se persisten temporalmente en el navegador. Las consultas del chat responderán según el contenido simulado.
+              Los archivos subidos se persisten en la base de datos. Las consultas del chat responderán según el contenido indexado.
             </p>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function DocumentsPage() {
         </div>
         
         <button
-          onClick={() => setIsOpenUploadModal(true)}
+          onClick={() => setIsUploadOpen(true)}
           className="px-4.5 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm shadow-md shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto cursor-pointer"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -120,7 +120,7 @@ export default function DocumentsPage() {
             La base de datos vectorial está vacía. Sube tu primer archivo PDF, DOCX o HTML para comenzar a realizar preguntas sobre él.
           </p>
           <button
-            onClick={() => setIsOpenUploadModal(true)}
+            onClick={() => setIsUploadOpen(true)}
             className="mt-6 px-4 py-2.5 rounded-xl border border-gold-400 text-gold-600 hover:bg-gold-50/20 font-bold text-xs transition-all cursor-pointer"
           >
             Subir archivo inicial
@@ -161,9 +161,4 @@ export default function DocumentsPage() {
       )}
     </div>
   )
-
-  // Quick helper to avoid naming mismatches
-  function setIsOpenUploadModal(val: boolean) {
-    setIsUploadOpen(val)
-  }
 }

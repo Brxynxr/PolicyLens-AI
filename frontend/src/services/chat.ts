@@ -1,6 +1,7 @@
 import type { Conversation, Message, ChatResponse, ChatSource } from '../types'
+import api from './api'
 
-// Setup initial mock data in localStorage if empty
+// Setup initial mock data in localStorage if empty (kept as fallback)
 const MOCK_CONVERSATIONS_KEY = 'policylens_mock_conversations'
 
 const defaultConversations: Conversation[] = [
@@ -76,11 +77,43 @@ export async function obtenerConversacion(id: number): Promise<Conversation | nu
 }
 
 export async function enviarPregunta(
-  pregunta: string, 
+  pregunta: string,
   conversationId?: number
 ): Promise<{ chatResponse: ChatResponse; conversationId: number; messageUser: Message; messageAssistant: Message }> {
   await delay(1500) // RAG processing takes longer
 
+  // Try real API first, fallback to mock
+  try {
+    // Usamos el tipo correcto para el body y response
+    const res = await api.post('/chat', { pregunta, conversationId }) as any
+    
+    // Real API response format
+    return {
+      chatResponse: {
+        answer: res.answer,
+        sources: res.sources || []
+      },
+      conversationId: res.conversationId || (conversationId || 1),
+      messageUser: res.messageUser || {
+        id: Date.now(),
+        conversation_id: conversationId || 1,
+        role: 'user',
+        content: pregunta,
+        created_at: new Date().toISOString()
+      },
+      messageAssistant: res.messageAssistant || {
+        id: Date.now() + 1,
+        conversation_id: conversationId || 1,
+        role: 'assistant',
+        content: res.answer,
+        created_at: new Date().toISOString()
+      }
+    }
+  } catch (err) {
+    console.warn('Using mock response, API failed:', err)
+  }
+
+  // Fallback to mock response
   const convs = getStoredConversations()
   let targetConvId = conversationId
 
