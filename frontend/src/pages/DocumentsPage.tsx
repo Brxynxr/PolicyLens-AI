@@ -1,8 +1,165 @@
+import { useState, useEffect } from 'react'
+import { listarDocumentos, eliminarDocumento } from '../services/documents'
+import type { Document } from '../types'
+import DocumentCard from '../components/DocumentCard'
+import FileUpload from '../components/FileUpload'
+
 export default function DocumentsPage() {
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchDocs = async () => {
+    try {
+      setLoading(true)
+      const res = await listarDocumentos()
+      setDocuments(res.documents)
+      setTotal(res.total)
+    } catch {
+      setError('Error al recuperar la lista de documentos.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDocs()
+  }, [])
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este documento de la base vectorial? Las consultas RAG ya no tendrán acceso a él.')) return
+    setDeletingId(id)
+    try {
+      await eliminarDocumento(id)
+      await fetchDocs()
+    } catch {
+      setError('Error al eliminar el documento.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleUploadSuccess = () => {
+    setIsUploadOpen(false)
+    fetchDocs()
+  }
+
   return (
-    <div>
-      <h1>Documentos</h1>
-      <p>Página de documentos en construcción</p>
+    <div className="space-y-6 relative min-h-[calc(100vh-10rem)]">
+      {/* Top Banner Warning: Mock status */}
+      <div className="p-4 rounded-xl bg-brand-100 border border-brand-200/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+        <div className="flex gap-3">
+          <span className="shrink-0 text-gold-600">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <div>
+            <h4 className="text-xs font-bold text-neutral-800 uppercase tracking-wide">Base Documental Simulada</h4>
+            <p className="text-2xs text-neutral-500 mt-0.5 leading-relaxed font-semibold">
+              Los archivos subidos se persisten temporalmente en el navegador. Las consultas del chat responderán según el contenido simulado.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">Documentos Indexados</h1>
+          <p className="text-xs font-semibold text-neutral-400 mt-1 uppercase tracking-wider">
+            Mostrando {total} documento{total !== 1 ? 's' : ''} en la base de datos vectorial
+          </p>
+        </div>
+        
+        <button
+          onClick={() => setIsOpenUploadModal(true)}
+          className="px-4.5 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm shadow-md shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Subir Documento</span>
+        </button>
+      </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-xs font-semibold flex items-center gap-2">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Grid List */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="flex gap-4 p-4 rounded-2xl border border-brand-200 bg-white animate-pulse">
+              <div className="w-12 h-12 rounded-xl bg-neutral-200 shrink-0" />
+              <div className="flex-1 space-y-2.5">
+                <div className="h-3 bg-neutral-200 rounded-md w-3/4" />
+                <div className="h-2.5 bg-neutral-200 rounded-md w-1/2" />
+                <div className="h-2 bg-neutral-200 rounded-md w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-white border border-brand-200 rounded-2xl max-w-lg mx-auto shadow-2xs">
+          <div className="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center text-gold-600 mb-6 shadow-sm">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-base font-bold text-neutral-800">No hay documentos indexados</h3>
+          <p className="text-xs text-neutral-400 mt-2 font-medium max-w-xs leading-relaxed">
+            La base de datos vectorial está vacía. Sube tu primer archivo PDF, DOCX o HTML para comenzar a realizar preguntas sobre él.
+          </p>
+          <button
+            onClick={() => setIsOpenUploadModal(true)}
+            className="mt-6 px-4 py-2.5 rounded-xl border border-gold-400 text-gold-600 hover:bg-gold-50/20 font-bold text-xs transition-all cursor-pointer"
+          >
+            Subir archivo inicial
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {documents.map((doc) => (
+            <DocumentCard
+              key={doc.id}
+              document={doc}
+              onDelete={handleDelete}
+              deletingId={deletingId}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Floating Upload Modal */}
+      {isUploadOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Overlay Background */}
+          <div 
+            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsUploadOpen(false)}
+          />
+          
+          <FileUpload 
+            onUploadSuccess={handleUploadSuccess} 
+            onClose={() => setIsUploadOpen(false)} 
+          />
+        </div>
+      )}
     </div>
   )
+
+  // Quick helper to avoid naming mismatches
+  function setIsOpenUploadModal(val: boolean) {
+    setIsUploadOpen(val)
+  }
 }
