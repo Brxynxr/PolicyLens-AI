@@ -26,10 +26,6 @@ env/
 # ChromaDB data
 chroma_data/
 
-# Documentos cargados
-documents/*
-!documents/.gitkeep
-
 # Frontend
 frontend/node_modules/
 frontend/dist/
