@@ -62,37 +62,42 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1.5">
-        {navItems.map((item) => (
-          <NavLink
+        {navItems.map((item, index) => (
+          <div 
             key={item.to}
-            to={item.to}
-            onClick={onClose}
-            className={({ isActive }) => `
-              flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 group
-              ${isActive 
-                ? 'bg-white text-gold-700 shadow-sm border border-brand-200/50 translate-x-1' 
-                : 'text-neutral-600 hover:bg-brand-200/60 hover:text-neutral-900'}
-            `}
+            className="animate-fade-in-right"
+            style={{ animationDelay: `${index * 80}ms` }}
           >
-            {({ isActive }) => (
-              <>
-                <span className={`transition-colors duration-300 ${isActive ? 'text-gold-500' : 'text-neutral-400 group-hover:text-neutral-600'}`}>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
-                {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold-500" />
-                )}
-              </>
-            )}
-          </NavLink>
+            <NavLink
+              to={item.to}
+              onClick={onClose}
+              className={({ isActive }) => `
+                flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 group
+                ${isActive 
+                  ? 'bg-white text-gold-700 shadow-sm border border-brand-200/50 translate-x-1' 
+                  : 'text-neutral-600 hover:bg-brand-200/60 hover:text-neutral-900'}
+              `}
+            >
+              {({ isActive }) => (
+                <>
+                  <span className={`transition-colors duration-300 ${isActive ? 'text-gold-500' : 'text-neutral-400 group-hover:text-neutral-600'}`}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold-500" />
+                  )}
+                </>
+              )}
+            </NavLink>
+          </div>
         ))}
       </nav>
 
       {/* Footer Info */}
       <div className="p-4 border-t border-brand-200 bg-brand-50/50">
         <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl border border-dashed border-brand-200/80 bg-white/40">
-          <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
+          <div className="w-2.5 h-2.5 rounded-full bg-gold-500 animate-pulse-gold" />
           <div className="text-xs">
             <p className="font-semibold text-neutral-700">Sistema Activo</p>
             <p className="text-neutral-400">Versión 1.0 (Académico)</p>

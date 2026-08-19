@@ -95,16 +95,15 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* Grid List */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="flex gap-4 p-4 rounded-2xl border border-brand-200 bg-white animate-pulse">
-              <div className="w-12 h-12 rounded-xl bg-neutral-200 shrink-0" />
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="flex gap-4 p-4 rounded-2xl border border-brand-200 bg-white shadow-2xs relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl shrink-0 shimmer-skeleton" />
               <div className="flex-1 space-y-2.5">
-                <div className="h-3 bg-neutral-200 rounded-md w-3/4" />
-                <div className="h-2.5 bg-neutral-200 rounded-md w-1/2" />
-                <div className="h-2 bg-neutral-200 rounded-md w-1/4" />
+                <div className="h-3.5 rounded-md w-3/4 shimmer-skeleton" />
+                <div className="h-2.5 rounded-md w-1/2 shimmer-skeleton" />
+                <div className="h-2 rounded-md w-1/4 shimmer-skeleton" />
               </div>
             </div>
           ))}
@@ -129,13 +128,18 @@ export default function DocumentsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {documents.map((doc) => (
-            <DocumentCard
+          {documents.map((doc, index) => (
+            <div 
               key={doc.id}
-              document={doc}
-              onDelete={handleDelete}
-              deletingId={deletingId}
-            />
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${index * 60}ms` }}
+            >
+              <DocumentCard
+                document={doc}
+                onDelete={handleDelete}
+                deletingId={deletingId}
+              />
+            </div>
           ))}
         </div>
       )}

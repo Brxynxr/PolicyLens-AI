@@ -154,7 +154,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-8rem)] md:h-[calc(100vh-4.5rem)] gap-6 overflow-hidden">
       {/* Internal panel for conversation list history */}
-      <div className="hidden lg:flex flex-col w-72 bg-white rounded-2xl border border-brand-200 overflow-hidden shrink-0">
+      <div className="hidden lg:flex flex-col w-72 bg-white rounded-2xl border border-brand-200 overflow-hidden shrink-0 animate-fade-in-right shadow-2xs">
         <div className="p-4 border-b border-brand-200 bg-brand-50/30 flex justify-between items-center">
           <h2 className="font-bold text-neutral-800 text-sm">Historial de Consultas</h2>
           <button 
@@ -206,7 +206,7 @@ export default function ChatPage() {
       </div>
 
       {/* Main chat window container */}
-      <div className="flex flex-col flex-1 bg-white rounded-2xl border border-brand-200 overflow-hidden relative shadow-xs">
+      <div className="flex flex-col flex-1 bg-white rounded-2xl border border-brand-200 overflow-hidden relative shadow-xs animate-scale-up">
         
         {/* Mock Environment Info Header */}
         <div className="px-5 py-3.5 border-b border-brand-200 bg-brand-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
@@ -264,16 +264,16 @@ export default function ChatPage() {
               ))}
               
               {loading && (
-                <div className="flex gap-4 p-4 md:p-6 rounded-2xl bg-white border border-brand-200 relative overflow-hidden animate-pulse">
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gold-400/50" />
+                <div className="flex gap-4 p-4 md:p-6 rounded-2xl bg-white border border-brand-200 relative overflow-hidden shadow-2xs">
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gold-400" />
                   <div className="shrink-0">
-                    <div className="w-10 h-10 rounded-xl bg-gold-200 flex items-center justify-center" />
+                    <div className="w-10 h-10 rounded-xl bg-gold-100 border border-gold-200 flex items-center justify-center font-bold text-sm text-gold-500 shimmer-skeleton" />
                   </div>
                   <div className="flex-1 space-y-3">
-                    <div className="h-3.5 bg-neutral-200 rounded-md w-1/4" />
+                    <div className="h-3.5 rounded-md w-1/4 shimmer-skeleton" />
                     <div className="space-y-2">
-                      <div className="h-3 bg-neutral-200 rounded-md w-full" />
-                      <div className="h-3 bg-neutral-200 rounded-md w-5/6" />
+                      <div className="h-3 rounded-md w-full shimmer-skeleton" />
+                      <div className="h-3 rounded-md w-5/6 shimmer-skeleton" />
                     </div>
                   </div>
                 </div>

@@ -110,7 +110,10 @@ export default function SyncPage() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {/* Dashboard highlights counter */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs">
+            <div 
+              className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs animate-fade-in-up"
+              style={{ animationDelay: '0ms' }}
+            >
               <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center font-bold text-sm shrink-0">
                 {result.added.length}
               </div>
@@ -120,7 +123,10 @@ export default function SyncPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs">
+            <div 
+              className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs animate-fade-in-up"
+              style={{ animationDelay: '80ms' }}
+            >
               <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center font-bold text-sm shrink-0">
                 {result.updated.length}
               </div>
@@ -130,7 +136,10 @@ export default function SyncPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs">
+            <div 
+              className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs animate-fade-in-up"
+              style={{ animationDelay: '160ms' }}
+            >
               <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-600 flex items-center justify-center font-bold text-sm shrink-0">
                 {result.unchanged.length}
               </div>
@@ -140,7 +149,10 @@ export default function SyncPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs">
+            <div 
+              className="bg-white border border-brand-200 p-4.5 rounded-2xl flex items-center gap-3.5 shadow-2xs animate-fade-in-up"
+              style={{ animationDelay: '240ms' }}
+            >
               <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold text-sm shrink-0">
                 {result.errors.length}
               </div>

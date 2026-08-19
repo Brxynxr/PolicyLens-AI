@@ -71,7 +71,7 @@ export default function DocumentCard({ document, onDelete, deletingId }: Documen
   return (
     <div 
       className={`
-        flex items-start gap-4 p-4 rounded-2xl border border-brand-200 bg-white shadow-2xs hover:shadow-sm hover:border-gold-300 transition-all duration-300 relative group
+        flex items-start gap-4 p-4 rounded-2xl border border-brand-200 bg-white shadow-2xs hover:shadow-md hover:scale-[1.015] hover:border-gold-400 transition-all duration-300 relative group
         ${isDeleting ? 'opacity-50 pointer-events-none' : ''}
       `}
     >
