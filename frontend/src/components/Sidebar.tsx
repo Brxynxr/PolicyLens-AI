@@ -72,20 +72,20 @@ export default function Sidebar({ onClose }: SidebarProps) {
               to={item.to}
               onClick={onClose}
               className={({ isActive }) => `
-                flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 group
+                flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 group border border-transparent
                 ${isActive 
-                  ? 'bg-white text-gold-700 shadow-sm border border-brand-200/50 translate-x-1' 
-                  : 'text-neutral-600 hover:bg-brand-200/60 hover:text-neutral-900'}
+                  ? 'bg-white text-gold-700 shadow-sm border-brand-200/50 translate-x-1.5' 
+                  : 'text-neutral-600 hover:bg-white hover:text-neutral-900 hover:shadow-2xs hover:border-brand-200/30 hover:translate-x-1'}
               `}
             >
               {({ isActive }) => (
                 <>
-                  <span className={`transition-colors duration-300 ${isActive ? 'text-gold-500' : 'text-neutral-400 group-hover:text-neutral-600'}`}>
+                  <span className={`transition-all duration-300 transform group-hover:scale-110 ${isActive ? 'text-gold-500' : 'text-neutral-400 group-hover:text-gold-600'}`}>
                     {item.icon}
                   </span>
-                  <span>{item.label}</span>
+                  <span className="transition-transform duration-300 group-hover:translate-x-0.5">{item.label}</span>
                   {isActive && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold-500" />
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse" />
                   )}
                 </>
               )}
