@@ -188,48 +188,13 @@ Modelo User con SQLAlchemy:
 
 # INTEGRANTE 2: Frontend & Integration Lead
 
-**Responsable:** Login, rutas protegidas, sidebar dinámico, página de usuarios.
+**Responsable:** Login, sidebar, página de usuarios.
 
 **Estado:** PENDIENTE
 
 ---
 
-### Tarea 1: Servicio de Auth
-
-**Archivo:** `frontend/src/services/auth.ts` (nuevo)
-
-Crear funciones:
-
-| Función | Llamada | Almacenamiento |
-|---------|---------|----------------|
-| `login(email, password)` | POST `/auth/login` | Guardar user_id en `localStorage` |
-| `logout()` | — | Eliminar user_id de `localStorage` |
-| `getUsuarioActual()` | GET `/auth/me?user_id=...` | — |
-| `getUser_id()` | — | Leer user_id de `localStorage` |
-
----
-
-### Tarea 2: Contexto de Autenticación
-
-**Archivo:** `frontend/src/context/AuthContext.tsx` (nuevo)
-
-Crear contexto que provea:
-
-| Propiedad | Tipo | Descripción |
-|-----------|------|-------------|
-| `user` | `User \| null` | Usuario autenticado |
-| `isAuthenticated` | `bool` | Hay user_id en localStorage |
-| `isAdmin` | `bool` | role === "admin" |
-| `login(email, password)` | `Promise<void>` | Login y guardar user_id |
-| `logout()` | `void` | Logout y limpiar |
-
-Al montar:
-- Si hay user_id en localStorage → llamar GET `/auth/me` para validar
-- Si user_id inválido → limpiar y redirigir a `/login`
-
----
-
-### Tarea 3: Página de Login
+### Tarea 1: Página de Login
 
 **Archivo:** `frontend/src/pages/LoginPage.tsx` (nuevo)
 
@@ -238,37 +203,37 @@ Crear formulario con:
 - Campo password (type password)
 - Botón "Iniciar Sesión"
 - Mensaje de error si falla
-- Al exito → redirigir a `/chat`
+
+Al exito:
+- Guardar `user_id` y `user_role` en localStorage
+- Redirigir a `/chat`
 
 Diseño: centrado, fondo neutro, card blanca con sombra.
 
 ---
 
-### Tarea 4: Rutas Protegidas
+### Tarea 2: Verificar Autenticación
 
 **Archivo:** `frontend/src/App.tsx` (modificar)
 
-Crear componente `ProtectedRoute`:
+Crear función simple para verificar si está logueado:
 ```typescript
-function ProtectedRoute({ children, adminOnly = false }) {
-  // Si no hay user_id → redirigir a /login
-  // Si adminOnly y no es admin → redirigir a /chat
-  // Si todo OK → renderizar children
+function isAuthenticated() {
+  return localStorage.getItem('user_id') !== null
+}
+
+function isAdmin() {
+  return localStorage.getItem('user_role') === 'admin'
 }
 ```
 
-Nueva estructura de rutas:
-```
-/login              → LoginPage (público)
-/chat               → ProtectedRoute → ChatPage (cualquier rol)
-/documents          → ProtectedRoute adminOnly → DocumentsPage
-/sync               → ProtectedRoute adminOnly → SyncPage
-/users              → ProtectedRoute adminOnly → UsersPage
-```
+En cada ruta protegida:
+- Si no hay user_id → redirigir a `/login`
+- Si adminOnly y no es admin → redirigir a `/chat`
 
 ---
 
-### Tarea 5: Sidebar Dinámico
+### Tarea 3: Sidebar Dinámico
 
 **Archivo:** `frontend/src/components/Sidebar.tsx` (modificar)
 
@@ -278,12 +243,12 @@ Nueva estructura de rutas:
 | Empleado | Solo Consultas |
 
 Agregar abajo:
-- Nombre del usuario
-- Botón "Cerrar Sesión"
+- Nombre del usuario (de localStorage)
+- Botón "Cerrar Sesión" (limpiar localStorage)
 
 ---
 
-### Tarea 6: Servicio de Usuarios
+### Tarea 4: Servicio de Usuarios
 
 **Archivo:** `frontend/src/services/users.ts` (nuevo)
 
@@ -296,39 +261,29 @@ Agregar abajo:
 
 ---
 
-### Tarea 7: Página de Usuarios
+### Tarea 5: Página de Usuarios
 
 **Archivo:** `frontend/src/pages/UsersPage.tsx` (nuevo)
 
-Crear interfaz:
-- Tabla con columnas: Nombre, Email, Rol, Estado, Fecha, Acciones
-- Botón "Crear Usuario" → abre modal
-- Botón editar → abre modal con datos
-- Botón eliminar → confirmación
+Crear interfaz básica:
+- Tabla con columnas: Nombre, Email, Rol, Estado, Acciones
+- Botón "Crear Usuario"
+- Botón editar
+- Botón eliminar con confirmación
 - Solo visible para admin
 
 ---
 
-### Tarea 8: Modal de Usuarios
+### Tarea 6: Modal de Usuarios
 
 **Archivo:** `frontend/src/components/UserModal.tsx` (nuevo)
 
 Crear modal con formulario:
 - Campo nombre
 - Campo email
-- Campo password (solo al crear, no al editar)
+- Campo password (solo al crear)
 - Select de rol (admin / empleado)
 - Botón Guardar / Cancelar
-
----
-
-### Tarea 9: Layout Actualizado
-
-**Archivo:** `frontend/src/components/Layout.tsx` (modificar)
-
-- Si no está autenticado → renderizar solo `<Outlet />` sin sidebar
-- Si está autenticado → renderizar sidebar + outlet
-- En móvil: sidebar colapsable
 
 ---
 
@@ -336,15 +291,12 @@ Crear modal con formulario:
 
 | Tipo | Archivo | Estado |
 |------|---------|--------|
-| Crear | `frontend/src/services/auth.ts` | PENDIENTE |
-| Crear | `frontend/src/services/users.ts` | PENDIENTE |
-| Crear | `frontend/src/context/AuthContext.tsx` | PENDIENTE |
 | Crear | `frontend/src/pages/LoginPage.tsx` | PENDIENTE |
+| Crear | `frontend/src/services/users.ts` | PENDIENTE |
 | Crear | `frontend/src/pages/UsersPage.tsx` | PENDIENTE |
 | Crear | `frontend/src/components/UserModal.tsx` | PENDIENTE |
 | Modificar | `frontend/src/App.tsx` | PENDIENTE |
 | Modificar | `frontend/src/components/Sidebar.tsx` | PENDIENTE |
-| Modificar | `frontend/src/components/Layout.tsx` | PENDIENTE |
 
 ---
 
@@ -385,11 +337,11 @@ Crear modal con formulario:
 
 ---
 
-### Tarea 2: Verificar Pipeline RAG + Auth
+### Tarea 2: Verificar Pipeline RAG
 
 Verificar que:
 - `POST /chat` funciona correctamente
-- `RAGService.preguntar()` no se ve afectado por el cambio
+- `RAGService.preguntar()` no se ve afectado
 - Las conversaciones se guardan correctamente
 
 ---
@@ -400,7 +352,6 @@ Probar con curl:
 
 ```bash
 # Admin puede acceder a documentos
-TOKEN_ADMIN="..."
 curl -X GET http://localhost:8000/documents -H "user_id: 1"
 
 # Empleado NO puede acceder a documentos
@@ -413,18 +364,7 @@ curl -X POST http://localhost:8000/chat -H "Content-Type: application/json" -d '
 
 ---
 
-### Tarea 4: Verificar Frontend
-
-Verificar que:
-- El login funciona correctamente
-- El user_id se guarda en localStorage
-- El admin ve todas las páginas
-- El empleado solo ve chat
-- El sidebar es dinámico según el rol
-
----
-
-### Tarea 5: Documentación
+### Tarea 4: Documentación
 
 **Archivos a modificar:**
 
@@ -441,7 +381,7 @@ Verificar que:
 
 ---
 
-### Tarea 6: Verificar Variables de Entorno
+### Tarea 5: Verificar Variables de Entorno
 
 Verificar que:
 - `.env` tiene las variables correctas
@@ -471,11 +411,11 @@ Fase 1 (Backend - Integrante 1): ✅ COMPLETADA
   → Auth y CRUD usuarios funcionando
 
 Fase 2 (Frontend - Integrante 2): PENDIENTE
-  Tareas 1-9
-  → Login, rutas protegidas, sidebar, página usuarios
+  Tareas 1-6
+  → Login, sidebar, página usuarios
 
 Fase 3 (Integración - Integrante 3): PENDIENTE
-  Tareas 1-6
+  Tareas 1-5
   → Proteger endpoints, verificar RAG, documentación
 ```
 
@@ -492,7 +432,6 @@ Fase 3 (Integración - Integrante 3): PENDIENTE
 - [x] Login funcional (texto plano)
 - [ ] Backend: Endpoints protegidos por rol
 - [ ] Frontend: Login funcional
-- [ ] Frontend: Rutas protegidas
 - [ ] Frontend: Sidebar dinámico
 - [ ] Frontend: Página de usuarios
 - [ ] Documentación actualizada
