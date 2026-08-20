@@ -52,8 +52,8 @@ class TestDocumentsAndSync(unittest.TestCase):
     def setUp(self):
         self.patcher_indexar = patch("backend.services.rag.RAGService.indexar_documento", return_value=None)
         self.patcher_eliminar = patch("backend.services.rag.RAGService.eliminar_documento", return_value=None)
-        self.patcher_embedding = patch("backend.services.embeddings.EmbeddingService.generar_embedding", return_value=[0.1] * 1536)
-        self.patcher_embeddings_lote = patch("backend.services.embeddings.EmbeddingService.generar_embeddings_lote", side_effect=lambda textos: [[0.1] * 1536 for _ in textos])
+        self.patcher_embedding = patch("backend.services.embeddings.EmbeddingService.generar_embedding", return_value=[0.1] * 384)
+        self.patcher_embeddings_lote = patch("backend.services.embeddings.EmbeddingService.generar_embeddings_lote", side_effect=lambda textos, **kwargs: [[0.1] * 384 for _ in textos])
 
         self.mock_indexar = self.patcher_indexar.start()
         self.mock_eliminar = self.patcher_eliminar.start()
@@ -77,7 +77,11 @@ class TestDocumentsAndSync(unittest.TestCase):
         sync_router_mod.DOCUMENTS_DIR = self.old_docs_dir_2
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
-        self.db.rollback()
+        try:
+            self.db.query(Document).delete()
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
         self.db.close()
 
     def _generar_pdf_bytes(self, contenido: str) -> bytes:
@@ -243,6 +247,58 @@ class TestDocumentsAndSync(unittest.TestCase):
         data_sync3 = res_sync3.json()
 
         self.assertIn("politica_interna.html", data_sync3["updated"])
+
+        # Verificar que la cantidad de registros para 'politica_interna.html' en SQLite siga siendo 1 sin duplicados
+        res_list = self.client.get("/documents")
+        docs_politica = [d for d in res_list.json()["documents"] if d["name"] == "politica_interna.html"]
+        self.assertEqual(len(docs_politica), 1)
+
+    def test_upload_reemplazo_sin_duplicados(self):
+        """Prueba 6: Re-subida de un documento con el mismo nombre actualiza la entrada sin crear duplicados en SQLite."""
+        pdf1 = self._generar_pdf_bytes("Versión 1 del documento")
+        res1 = self.client.post(
+            "/documents/upload",
+            files={"file": ("manual.pdf", pdf1, "application/pdf")}
+        )
+        self.assertEqual(res1.status_code, 201)
+        doc1_id = res1.json()["id"]
+
+        pdf2 = self._generar_pdf_bytes("Versión 2 del documento modificada")
+        res2 = self.client.post(
+            "/documents/upload",
+            files={"file": ("manual.pdf", pdf2, "application/pdf")}
+        )
+        self.assertEqual(res2.status_code, 201)
+        doc2_id = res2.json()["id"]
+
+        # El ID debe ser el mismo (actualizado) y no debe existir más de 1 registro para 'manual.pdf'
+        self.assertEqual(doc1_id, doc2_id)
+
+        res_list = self.client.get("/documents")
+        docs_manual = [d for d in res_list.json()["documents"] if d["name"] == "manual.pdf"]
+        self.assertEqual(len(docs_manual), 1)
+
+    def test_chat_conversation_continuity(self):
+        """Prueba 5: Endpoint /chat con reutilización de conversation_id e historial."""
+        with patch("backend.services.llm.LLMService.generar_respuesta", return_value="Respuesta de prueba RAG"):
+            # 1. Primer mensaje sin conversation_id -> crea conversación
+            res1 = self.client.post("/chat", json={"question": "¿Cuáles son las vacaciones?"})
+            self.assertEqual(res1.status_code, 200)
+            data1 = res1.json()
+            conv_id = data1["conversation_id"]
+            self.assertIsNotNone(conv_id)
+
+            # 2. Segundo mensaje con conversation_id -> mantiene la misma conversación
+            res2 = self.client.post("/chat", json={"question": "¿Y sobre el teletrabajo?", "conversation_id": conv_id})
+            self.assertEqual(res2.status_code, 200)
+            data2 = res2.json()
+            self.assertEqual(data2["conversation_id"], conv_id)
+
+            # 3. Verificar que la conversación contenga los 4 mensajes (2 de usuario, 2 de asistente)
+            res_conv = self.client.get(f"/chat/conversations/{conv_id}")
+            self.assertEqual(res_conv.status_code, 200)
+            conv_data = res_conv.json()
+            self.assertEqual(len(conv_data["messages"]), 4)
 
 
 if __name__ == "__main__":

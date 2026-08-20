@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
@@ -21,26 +22,58 @@ def guardar_documento(
 ) -> Document:
     """
     Crea o actualiza un registro de documento en la base de datos SQLite.
-    Si existe un documento previo con el mismo hash, actualiza su registro.
+    Prioriza la búsqueda por nombre de archivo para actualizar registros existentes
+    y evitar la duplicación de filas en SQLite al modificar contenido.
     """
-    doc_existente = db.query(Document).filter(Document.hash == hash_val).first()
-    if doc_existente:
-        doc_existente.name = nombre
-        doc_existente.original_name = original_name
-        doc_existente.type = tipo
-        doc_existente.size = size
-        doc_existente.status = status
-        db.commit()
-        db.refresh(doc_existente)
-        return doc_existente
+    # 1. Buscar si ya existe un documento activo con el mismo nombre de archivo
+    docs_mismo_nombre = db.query(Document).filter(
+        Document.name == nombre,
+        Document.status != "deleted"
+    ).order_by(Document.id.asc()).all()
 
+    if docs_mismo_nombre:
+        doc_principal = docs_mismo_nombre[0]
+        doc_principal.original_name = original_name
+        doc_principal.type = tipo
+        doc_principal.hash = hash_val
+        doc_principal.size = size
+        doc_principal.status = status
+        doc_principal.upload_date = datetime.now(timezone.utc)
+
+        # Eliminar cualquier registro duplicado obsoleto con el mismo nombre
+        if len(docs_mismo_nombre) > 1:
+            for doc_duplicado in docs_mismo_nombre[1:]:
+                db.delete(doc_duplicado)
+
+        db.commit()
+        db.refresh(doc_principal)
+        return doc_principal
+
+    # 2. Si no coincide por nombre, verificar si existe por hash SHA-256
+    doc_mismo_hash = db.query(Document).filter(
+        Document.hash == hash_val,
+        Document.status != "deleted"
+    ).first()
+    if doc_mismo_hash:
+        doc_mismo_hash.name = nombre
+        doc_mismo_hash.original_name = original_name
+        doc_mismo_hash.type = tipo
+        doc_mismo_hash.size = size
+        doc_mismo_hash.status = status
+        doc_mismo_hash.upload_date = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(doc_mismo_hash)
+        return doc_mismo_hash
+
+    # 3. Si no existe previamente, crear una nueva entrada
     nuevo_doc = Document(
         name=nombre,
         original_name=original_name,
         type=tipo,
         hash=hash_val,
         size=size,
-        status=status
+        status=status,
+        upload_date=datetime.now(timezone.utc)
     )
     db.add(nuevo_doc)
     db.commit()

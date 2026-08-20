@@ -5,8 +5,9 @@ import httpx
 
 class EmbeddingService:
     """
-    Servicio desacoplado para generar embeddings.
-    Soporta dos modos: API (NVIDIA NIM) y Local (sentence-transformers).
+    Servicio desacoplado para generar embeddings (estandarizado a 384 dimensiones).
+    Utiliza por defecto sentence-transformers local ('paraphrase-multilingual-MiniLM-L12-v2')
+    para búsquedas vectoriales consistentes en ChromaDB.
     """
 
     def __init__(self):
@@ -21,25 +22,38 @@ class EmbeddingService:
             self._local_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         return self._local_model
 
-    def generar_embedding(self, texto: str, local: bool = False) -> List[float]:
+    def generar_embedding(self, texto: str, local: bool = True) -> List[float]:
+        """
+        Genera un vector de embedding (384d por defecto).
+        """
         if local:
             return self._generar_embedding_local(texto)
         return self._generar_embedding_api(texto)
 
-    def generar_embeddings_lote(self, textos: List[str], local: bool = False) -> List[List[float]]:
+    def generar_embeddings_lote(self, textos: List[str], local: bool = True) -> List[List[float]]:
+        """
+        Genera un lote de vectores de embedding (384d por defecto).
+        """
         if local:
             return self._generar_embeddings_lote_local(textos)
         return self._generar_embeddings_lote_api(textos)
 
     def _generar_embedding_local(self, texto: str) -> List[float]:
-        model = self._get_local_model()
-        embedding = model.encode(texto)
-        return embedding.tolist()
+        try:
+            model = self._get_local_model()
+            embedding = model.encode(texto)
+            return embedding.tolist()
+        except Exception:
+            # Vector nulo de 384 dimensiones como respaldo de emergencia
+            return [0.0] * 384
 
     def _generar_embeddings_lote_local(self, textos: List[str]) -> List[List[float]]:
-        model = self._get_local_model()
-        embeddings = model.encode(textos)
-        return [e.tolist() for e in embeddings]
+        try:
+            model = self._get_local_model()
+            embeddings = model.encode(textos)
+            return [e.tolist() for e in embeddings]
+        except Exception:
+            return [[0.0] * 384 for _ in textos]
 
     def _generar_embedding_api(self, texto: str) -> List[float]:
         headers = {

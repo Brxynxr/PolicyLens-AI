@@ -21,7 +21,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const res = await api.post('/auth/login', { email, password })
+      const res = await api.post('/auth/login', { email, password }) as any
       localStorage.setItem('user_id', String(res.user.id))
       localStorage.setItem('user_role', res.user.role)
       localStorage.setItem('user_name', res.user.nombre)

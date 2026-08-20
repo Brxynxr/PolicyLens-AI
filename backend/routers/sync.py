@@ -41,7 +41,18 @@ def sync_documents(db: Session = Depends(get_db)):
     errors: List[str] = []
     details: List[SyncFileDetail] = []
 
-    # Mapa de documentos existentes en la BD indexados por nombre original
+    # 1. Limpiar registros duplicados obsoletos en SQLite para el mismo nombre de archivo
+    all_docs = db.query(Document).filter(Document.status != "deleted").order_by(Document.id.desc()).all()
+    seen_names = set()
+    for d in all_docs:
+        if d.name in seen_names:
+            rag_service.eliminar_documento(d.id)
+            db.delete(d)
+        else:
+            seen_names.add(d.name)
+    db.commit()
+
+    # Mapa de documentos existentes en la BD indexados por nombre de archivo
     docs_existentes: Dict[str, Document] = {
         d.name: d for d in db.query(Document).filter(Document.status != "deleted").all()
     }

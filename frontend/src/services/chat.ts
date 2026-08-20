@@ -22,7 +22,7 @@ export async function enviarPregunta(
 ): Promise<{ chatResponse: ChatResponse; conversationId: number; messageUser: Message; messageAssistant: Message }> {
   const res = await api.post('/chat', {
     question: pregunta,
-    conversation_id: conversationId || undefined,
+    conversation_id: conversationId && conversationId > 0 ? conversationId : undefined,
     mode: mode
   }) as any
 

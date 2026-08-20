@@ -29,7 +29,12 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         )
 
     try:
-        resultado = rag_service.preguntar(request.question, db, mode=request.mode)
+        resultado = rag_service.preguntar(
+            pregunta=request.question,
+            db=db,
+            conversation_id=request.conversation_id,
+            mode=request.mode
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

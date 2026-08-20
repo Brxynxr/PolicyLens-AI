@@ -115,7 +115,8 @@ export default function ChatPage() {
     }
 
     try {
-      const res = await enviarPregunta(userText, activeConv?.id || undefined, mode)
+      const currentConvId = activeConv && activeConv.id > 0 ? activeConv.id : undefined
+      const res = await enviarPregunta(userText, currentConvId, mode)
       
       await loadConversations(res.conversationId)
       

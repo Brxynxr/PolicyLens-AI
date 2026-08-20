@@ -9,9 +9,10 @@ interface FileUploadProps {
 
 export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps) {
   const [dragActive, setDragActive] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [currentFileIndex, setCurrentFileIndex] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -26,16 +27,27 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
     }
   }
 
-  const validateFile = (selectedFile: File): boolean => {
-    const ext = selectedFile.name.split('.').pop()?.toLowerCase() || ''
+  const filterValidFiles = (selectedFiles: FileList | File[]): File[] => {
     const allowed = ['pdf', 'docx', 'html', 'htm']
-    if (!allowed.includes(ext)) {
-      setError(`Tipo de archivo no permitido. Solo se aceptan extensiones: .pdf, .docx, .html, .htm`)
-      setFile(null)
-      return false
+    const valid: File[] = []
+    const invalid: string[] = []
+
+    Array.from(selectedFiles).forEach(file => {
+      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+      if (allowed.includes(ext)) {
+        valid.push(file)
+      } else {
+        invalid.push(file.name)
+      }
+    })
+
+    if (invalid.length > 0) {
+      setError(`Archivos no permitidos (${invalid.join(', ')}). Solo se aceptan: .pdf, .docx, .html, .htm`)
+    } else {
+      setError(null)
     }
-    setError(null)
-    return true
+
+    return valid
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -43,20 +55,20 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
     e.stopPropagation()
     setDragActive(false)
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const selectedFile = e.dataTransfer.files[0]
-      if (validateFile(selectedFile)) {
-        setFile(selectedFile)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const validFiles = filterValidFiles(e.dataTransfer.files)
+      if (validFiles.length > 0) {
+        setFiles(prev => [...prev, ...validFiles])
       }
     }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0]
-      if (validateFile(selectedFile)) {
-        setFile(selectedFile)
+    if (e.target.files && e.target.files.length > 0) {
+      const validFiles = filterValidFiles(e.target.files)
+      if (validFiles.length > 0) {
+        setFiles(prev => [...prev, ...validFiles])
       }
     }
   }
@@ -65,21 +77,31 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
     inputRef.current?.click()
   }
 
+  const handleRemoveFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleUploadSubmit = async () => {
-    if (!file || uploading) return
+    if (files.length === 0 || uploading) return
     setUploading(true)
     setError(null)
     setProgress(0)
 
     try {
-      const doc = await subirDocumento(file, (percent) => {
-        setProgress(percent)
-      })
-      onUploadSuccess(doc)
-      setFile(null)
+      for (let i = 0; i < files.length; i++) {
+        setCurrentFileIndex(i)
+        const currentFile = files[i]
+        const doc = await subirDocumento(currentFile, (filePercent) => {
+          const fileWeight = 100 / files.length
+          const totalProgress = Math.round(i * fileWeight + (filePercent / 100) * fileWeight)
+          setProgress(totalProgress)
+        })
+        onUploadSuccess(doc)
+      }
+      setFiles([])
       setProgress(0)
     } catch (err: any) {
-      setError(err.message || 'Error al procesar el archivo.')
+      setError(err.message || 'Error al procesar la carga de archivos.')
     } finally {
       setUploading(false)
     }
@@ -90,13 +112,13 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="font-bold text-neutral-800 text-base leading-tight">Subir Documento</h2>
-          <p className="text-2xs text-neutral-400 mt-1 font-semibold">Carga archivos corporativos para indexar en la base de datos RAG</p>
+          <h2 className="font-bold text-neutral-800 text-base leading-tight">Subir Documentos</h2>
+          <p className="text-2xs text-neutral-400 mt-1 font-semibold">Carga uno o varios archivos corporativos para indexar en RAG</p>
         </div>
         <button 
           onClick={onClose}
           disabled={uploading}
-          className="p-1.5 rounded-lg border border-brand-200 bg-white text-neutral-400 hover:text-neutral-700 hover:bg-brand-50 transition-colors"
+          className="p-1.5 rounded-lg border border-brand-200 bg-white text-neutral-400 hover:text-neutral-700 hover:bg-brand-50 transition-colors cursor-pointer"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -105,7 +127,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
       </div>
 
       {/* Drag & Drop Area */}
-      {!file && (
+      {files.length === 0 && (
         <div
           onDragEnter={handleDrag}
           onDragOver={handleDrag}
@@ -122,6 +144,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
           <input
             ref={inputRef}
             type="file"
+            multiple
             onChange={handleChange}
             accept=".pdf,.docx,.html,.htm"
             className="hidden"
@@ -134,50 +157,84 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
           </div>
 
           <p className="text-sm font-bold text-neutral-800 leading-tight">
-            Arrastra tu archivo aquí o haz click para explorar
+            Arrastra tus archivos aquí o haz click para explorar
           </p>
           <p className="text-xs text-neutral-400 mt-2 font-medium">
-            Formatos admitidos: PDF, Word (DOCX) y HTML (Máx. 10MB)
+            Soporta selección múltiple (PDF, Word DOCX y HTML, Máx. 10MB c/u)
           </p>
         </div>
       )}
 
-      {/* File Selected Area */}
-      {file && (
-        <div className="p-4 rounded-xl border border-brand-200 bg-brand-50/30 space-y-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gold-100 text-gold-600 border border-gold-200 flex items-center justify-center shrink-0">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-neutral-800 truncate leading-snug">
-                {file.name}
-              </p>
-              <p className="text-2xs text-neutral-400 font-medium">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
-            </div>
-
+      {/* Files Selected Area */}
+      {files.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-neutral-700">
+              {files.length} archivo{files.length > 1 ? 's' : ''} seleccionado{files.length > 1 ? 's' : ''}
+            </span>
             {!uploading && (
               <button
-                onClick={() => setFile(null)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50/50 transition-all cursor-pointer"
+                onClick={triggerInput}
+                className="text-2xs font-bold text-gold-600 hover:text-gold-700 transition-colors cursor-pointer"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                + Agregar más
               </button>
             )}
           </div>
 
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            onChange={handleChange}
+            accept=".pdf,.docx,.html,.htm"
+            className="hidden"
+          />
+
+          <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+            {files.map((file, idx) => (
+              <div 
+                key={`${file.name}-${idx}`} 
+                className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
+                  uploading && currentFileIndex === idx 
+                    ? 'border-gold-400 bg-gold-50/20' 
+                    : 'border-brand-200 bg-brand-50/30'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-gold-100 text-gold-600 border border-gold-200 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-neutral-800 truncate leading-snug">
+                    {file.name}
+                  </p>
+                  <p className="text-2xs text-neutral-400 font-medium">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+
+                {!uploading && (
+                  <button
+                    onClick={() => handleRemoveFile(idx)}
+                    className="p-1 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50/50 transition-all cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
           {/* Progress loader */}
           {uploading && (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               <div className="flex justify-between text-2xs font-semibold text-neutral-500">
-                <span>{progress === 100 ? 'Procesando RAG...' : 'Subiendo archivo...'}</span>
+                <span>Procesando archivo {currentFileIndex + 1} de {files.length}...</span>
                 <span>{progress}%</span>
               </div>
               <div className="w-full bg-neutral-200 rounded-full h-1.5 overflow-hidden">
@@ -202,20 +259,20 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
       )}
 
       {/* Footer action buttons */}
-      {file && !uploading && (
+      {files.length > 0 && !uploading && (
         <div className="mt-6 flex gap-3">
           <button
-            onClick={() => setFile(null)}
+            onClick={() => setFiles([])}
             className="flex-1 px-4 py-3 rounded-xl border border-brand-200 bg-white hover:bg-brand-50 text-neutral-600 font-bold text-sm transition-all cursor-pointer"
           >
-            Cancelar
+            Limpiar todo
           </button>
           
           <button
             onClick={handleUploadSubmit}
             className="flex-1 px-4 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm shadow-md shadow-gold-500/20 hover:scale-[1.01] transition-all cursor-pointer"
           >
-            Cargar e Indexar
+            Cargar e Indexar ({files.length})
           </button>
         </div>
       )}

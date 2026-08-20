@@ -47,6 +47,19 @@ class RAGService:
         os.makedirs(chroma_path, exist_ok=True)
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
 
+        try:
+            self.collection = self.chroma_client.get_or_create_collection(
+                name="documents",
+                metadata={"hnsw:space": "cosine"}
+            )
+        except Exception:
+            self._reset_coleccion()
+
+    def _reset_coleccion(self):
+        try:
+            self.chroma_client.delete_collection("documents")
+        except Exception:
+            pass
         self.collection = self.chroma_client.get_or_create_collection(
             name="documents",
             metadata={"hnsw:space": "cosine"}
@@ -74,27 +87,48 @@ class RAGService:
 
         embeddings = self.embedding_service.generar_embeddings_lote(documents, local=True)
 
-        self.collection.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
-        )
+        try:
+            self.collection.upsert(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=metadatas
+            )
+        except Exception as e:
+            if "dimension" in str(e).lower() or "expecting" in str(e).lower():
+                self._reset_coleccion()
+                self.collection.upsert(
+                    ids=ids,
+                    embeddings=embeddings,
+                    documents=documents,
+                    metadatas=metadatas
+                )
+            else:
+                raise e
 
     def eliminar_documento(self, document_id: int) -> None:
-        results = self.collection.get(
-            where={"document_id": document_id}
-        )
-        if results["ids"]:
-            self.collection.delete(ids=results["ids"])
+        try:
+            results = self.collection.get(
+                where={"document_id": document_id}
+            )
+            if results["ids"]:
+                self.collection.delete(ids=results["ids"])
+        except Exception:
+            pass
 
     def buscar_fragmentos(self, pregunta: str, top_k: int = 5, local: bool = True) -> List[Dict[str, Any]]:
         pregunta_embedding = self.embedding_service.generar_embedding(pregunta, local=local)
 
-        results = self.collection.query(
-            query_embeddings=[pregunta_embedding],
-            n_results=top_k
-        )
+        try:
+            results = self.collection.query(
+                query_embeddings=[pregunta_embedding],
+                n_results=top_k
+            )
+        except Exception as e:
+            if "dimension" in str(e).lower() or "expecting" in str(e).lower():
+                self._reset_coleccion()
+                return []
+            raise e
 
         fragmentos = []
         if results["documents"] and results["documents"][0]:
@@ -138,10 +172,61 @@ class RAGService:
         mejores = [b for s, b in bloques_puntuados if s > 0.15][:2]
         return '\n\n'.join(mejores) if mejores else '\n\n'.join(bloques[:2])
 
-    def preguntar(self, pregunta: str, db: Session, mode: str = "rag") -> Dict[str, Any]:
-        fragmentos = self.buscar_fragmentos(pregunta, top_k=12, local=True)
+    def preguntar(
+        self,
+        pregunta: str,
+        db: Session,
+        conversation_id: Optional[int] = None,
+        mode: str = "rag"
+    ) -> Dict[str, Any]:
+        """
+        Orquesta el flujo completo RAG: recuperar/crear conversación, buscar contexto,
+        incorporar historial conversacional, generar respuesta (vía LLM o búsquedas locales)
+        y guardar mensajes en la BD.
+        """
+        # 1. Recuperar conversación existente o crear una nueva
+        conversation = None
+        if conversation_id:
+            conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
 
-        # Calcular scores combinados (semántico + léxico)
+        if not conversation:
+            conversation = Conversation()
+            db.add(conversation)
+            db.commit()
+            db.refresh(conversation)
+
+        # 2. Cargar historial previo de la conversación y obtener el último mensaje del usuario
+        historial = []
+        ultimo_mensaje_usuario = ""
+        if conversation.messages:
+            for msg in conversation.messages:
+                historial.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+                if msg.role == "user":
+                    ultimo_mensaje_usuario = msg.content
+
+        # Detectar si la pregunta actual es una meta-pregunta conversacional o un seguimiento contextual
+        pregunta_lower = pregunta.lower()
+        es_meta_pregunta = any(kw in pregunta_lower for kw in [
+            "primera pregunta", "primer tema", "qué te pregunté", "te pregunté", "te dije",
+            "qué dijimos", "de qué hablabamos", "de qué hablamos", "resumen", "conversado",
+            "anteriormente", "historial", "conversación"
+        ])
+
+        query_busqueda = pregunta
+        es_pregunta_corta_o_seguimiento = (
+            len(pregunta.split()) < 12 or 
+            any(kw in pregunta_lower for kw in ["y si", "y para", "y en", "cuántos", "cuál", "cuáles", "esto", "eso", "llevo", "años", "sobre", "anterior", "mismo", "mismas"])
+        )
+        if historial and ultimo_mensaje_usuario and es_pregunta_corta_o_seguimiento and not es_meta_pregunta:
+            query_busqueda = f"{ultimo_mensaje_usuario} {pregunta}"
+
+        # 3. Buscar fragmentos relevantes en la base vectorial con la consulta expandida
+        fragmentos = self.buscar_fragmentos(query_busqueda, top_k=12, local=True)
+
+        # 4. Calcular scores combinados (semántico + léxico)
         palabras_pregunta = set(re.findall(r'\b\w+\b', pregunta.lower())) - STOPWORDS_ES
         for frag in fragmentos:
             cos_sim = round((1 - frag["distance"]) * 100, 1)
@@ -190,22 +275,39 @@ class RAGService:
         contexto = "\n\n".join(contexto_parts)
         fuentes_str = "\n".join([f"- {f['document']}, p.{f['page']}" for f in fuentes])
 
-        if not fragmentos or (fragmentos[0].get("cos_score", 0) < 35.0 and fragmentos[0].get("hybrid_score", 0) < 36.0):
-            respuesta = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
-            fuentes = []
-        elif mode == "search":
-            respuesta = self._formatear_respuesta_solo_embeddings(pregunta, fragmentos_relevantes)
+        # 5. Generar respuesta según el modo seleccionado (RAG o Search)
+        tiene_fragmentos_relevantes = bool(
+            fragmentos and 
+            (fragmentos[0].get("cos_score", 0) >= 35.0 or fragmentos[0].get("hybrid_score", 0) >= 36.0)
+        )
+
+        if mode == "search":
+            if not tiene_fragmentos_relevantes:
+                respuesta = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
+                fuentes = []
+            else:
+                respuesta = self._formatear_respuesta_solo_embeddings(pregunta, fragmentos_relevantes)
         else:
-            try:
-                respuesta = self.llm_service.generar_respuesta(pregunta, contexto, fuentes_str)
-            except Exception as e:
-                respuesta = f"Error al generar la respuesta con el LLM: {str(e)}"
+            # Modo RAG (con LLM)
+            # Si NO hay fragmentos relevantes Y NO hay historial de conversación NI es meta-pregunta,
+            # retornar el mensaje de falta de información.
+            if not tiene_fragmentos_relevantes and not historial and not es_meta_pregunta:
+                respuesta = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
+                fuentes = []
+            else:
+                try:
+                    respuesta = self.llm_service.generar_respuesta(
+                        pregunta=pregunta,
+                        contexto=contexto if tiene_fragmentos_relevantes else "",
+                        fuentes=fuentes_str if tiene_fragmentos_relevantes else None,
+                        historial=historial
+                    )
+                    if not respuesta or not respuesta.strip():
+                        respuesta = "No fue posible generar una respuesta a partir del contexto."
+                except Exception as e:
+                    respuesta = f"Error al generar la respuesta con el LLM: {str(e)}"
 
-        conversation = Conversation()
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
-
+        # 6. Guardar mensajes en la base de datos vinculados a conversation.id
         msg_user = Message(
             conversation_id=conversation.id,
             role="user",

@@ -77,12 +77,12 @@ async def upload_document(
         with open(file_path, "wb") as buffer:
             buffer.write(content)
 
-        # Si ya existe un documento con el mismo nombre, eliminar sus chunks antiguos
-        doc_existente = db.query(Document).filter(
+        # Si ya existen documentos con el mismo nombre, eliminar sus chunks antiguos de ChromaDB
+        docs_existentes = db.query(Document).filter(
             Document.name == file.filename,
             Document.status != "deleted"
-        ).first()
-        if doc_existente:
+        ).all()
+        for doc_existente in docs_existentes:
             rag_service.eliminar_documento(doc_existente.id)
 
         res = procesar_documento(
