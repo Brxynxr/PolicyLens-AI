@@ -42,6 +42,31 @@ export interface Conversation {
   messages: Message[]
 }
 
+// User types based on backend schemas
+export interface User {
+  id: number
+  nombre: string
+  email: string
+  role: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface LoginResponse {
+  user: User
+  message: string
+}
+
+export interface UserListResponse {
+  total: number
+  users: User[]
+}
+
 // Sync types based on backend schemas
 export interface SyncFileDetail {
   filename: string

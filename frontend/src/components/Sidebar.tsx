@@ -1,10 +1,16 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { isAdmin } from '../App'
 
 interface SidebarProps {
   onClose?: () => void
 }
 
 export default function Sidebar({ onClose }: SidebarProps) {
+  const navigate = useNavigate()
+  const userName = localStorage.getItem('user_name') || 'Usuario'
+  const userRole = localStorage.getItem('user_role') || 'empleado'
+  const admin = isAdmin()
+
   const navItems = [
     {
       to: '/chat',
@@ -15,25 +21,43 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </svg>
       )
     },
-    {
-      to: '/documents',
-      label: 'Documentos',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      to: '/sync',
-      label: 'Sincronización',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
-        </svg>
-      )
-    }
+    ...(admin ? [
+      {
+        to: '/documents',
+        label: 'Documentos',
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        )
+      },
+      {
+        to: '/sync',
+        label: 'Sincronización',
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
+          </svg>
+        )
+      },
+      {
+        to: '/users',
+        label: 'Usuarios',
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        )
+      }
+    ] : [])
   ]
+
+  const handleLogout = () => {
+    localStorage.removeItem('user_id')
+    localStorage.removeItem('user_role')
+    localStorage.removeItem('user_name')
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="flex flex-col h-full bg-brand-100 border-r border-brand-200 w-64 text-neutral-800">
@@ -94,15 +118,26 @@ export default function Sidebar({ onClose }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Footer Info */}
+      {/* Footer: User info + Logout */}
       <div className="p-4 border-t border-brand-200 bg-brand-50/50">
-        <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl border border-dashed border-brand-200/80 bg-white/40">
-          <div className="w-2.5 h-2.5 rounded-full bg-gold-500 animate-pulse-gold" />
-          <div className="text-xs">
-            <p className="font-semibold text-neutral-700">Sistema Activo</p>
-            <p className="text-neutral-400">Versión 1.0 (Académico)</p>
+        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60 border border-brand-200/60 mb-2">
+          <div className="w-8 h-8 rounded-lg bg-gold-100 border border-gold-200 flex items-center justify-center text-gold-700 font-bold text-xs">
+            {userName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-neutral-800 truncate">{userName}</p>
+            <p className="text-2xs font-semibold text-neutral-400 uppercase tracking-wider">{userRole}</p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 border border-transparent hover:border-red-200 transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Cerrar Sesion
+        </button>
       </div>
     </div>
   )
