@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { isAuthenticated, isAdmin } from './utils/auth'
 
 // Pages
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import ChatPage from './pages/ChatPage'
 import DocumentsPage from './pages/DocumentsPage'
@@ -9,14 +11,6 @@ import UsersPage from './pages/UsersPage'
 
 // Layout
 import Layout from './components/Layout'
-
-export function isAuthenticated() {
-  return localStorage.getItem('user_id') !== null
-}
-
-export function isAdmin() {
-  return localStorage.getItem('user_role') === 'admin'
-}
 
 function ProtectedRoute() {
   if (!isAuthenticated()) {
@@ -38,13 +32,14 @@ function AdminRoute() {
 export default function App() {
   return (
     <Routes>
-      {/* Public */}
+      {/* Public routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/chat" replace />} />
           <Route path="/chat" element={<ChatPage />} />
 
           {/* Admin only */}
@@ -55,6 +50,10 @@ export default function App() {
           </Route>
         </Route>
       </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
+

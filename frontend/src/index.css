@@ -142,6 +142,16 @@ body {
   }
 }
 
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinSlowReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
 /* Animation Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -163,6 +173,14 @@ body {
   animation: pulseGold 2s infinite;
 }
 
+.animate-spin-slow {
+  animation: spinSlow 28s linear infinite;
+}
+
+.animate-spin-slow-reverse {
+  animation: spinSlowReverse 36s linear infinite;
+}
+
 .shimmer-skeleton {
   background: linear-gradient(90deg, #f5f0e8 25%, #faf8f5 50%, #f5f0e8 75%);
   background-size: 200% 100%;
@@ -175,3 +193,4 @@ body {
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
