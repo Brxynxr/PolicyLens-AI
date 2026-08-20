@@ -1,32 +1,38 @@
-# TAREAS — Sistema de Roles y Autenticación
+# TAREAS — Sistema de Roles y Usuarios
 
 ## Objetivo
 
-Agregar control de acceso por roles a PolicyLens-AI:
+Agregar gestión de usuarios a PolicyLens-AI:
 - **Admin**: CRUD de documentos, usuarios y sincronización
 - **Empleado**: Solo consultas en el chat RAG
 
 ---
 
-## Tecnologías a agregar
+## Enfoque Simplificado
 
-| Paquete | Versión | Uso |
-|---------|---------|-----|
-| passlib[bcrypt] | 1.7.4 | Hashing de contraseñas |
-| python-jose[cryptography] | 3.3.0 | Generación y verificación de JWT |
+Para este proyecto académico se omiten:
+- ❌ JWT y tokens
+- ❌ Hashing de contraseñas (password en texto plano)
+- ❌ Middleware de autenticación complejo
+
+Se implementa:
+- ✅ CRUD de usuarios
+- ✅ Login simple (verificación en BD)
+- ✅ Admin por defecto
+- ✅ Protección de endpoints por rol
 
 ---
 
 ## Modelo de Datos
 
-### Nueva tabla: users
+### Tabla: users
 
 ```
 User:
   id: int              (PK, autoincrement)
   nombre: str          (not null)
   email: str           (unique, not null)
-  hashed_password: str (not null)
+  password: str        (texto plano, not null)
   role: str            ("admin" | "empleado")
   is_active: bool      (default True)
   created_at: datetime (default now)
@@ -43,277 +49,150 @@ role: admin
 
 ---
 
-## Endpoints Nuevos
+## Endpoints
 
 ### Auth
 
-| Método | Ruta | Descripción | Acceso |
-|--------|------|-------------|--------|
-| POST | `/auth/login` | Login, retorna JWT | Público |
-| GET | `/auth/me` | Usuario autenticado | Cualquier rol |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/auth/login` | Login simple, retorna usuario |
+| GET | `/auth/me` | Obtener usuario por ID |
 
 ### Usuarios
 
-| Método | Ruta | Descripción | Acceso |
-|--------|------|-------------|--------|
-| GET | `/users` | Listar usuarios | Admin |
-| POST | `/users` | Crear usuario | Admin |
-| PUT | `/users/{id}` | Editar usuario | Admin |
-| DELETE | `/users/{id}` | Eliminar usuario | Admin |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/users` | Listar usuarios |
+| POST | `/users` | Crear usuario |
+| PUT | `/users/{id}` | Editar usuario |
+| DELETE | `/users/{id}` | Eliminar usuario |
 
 ---
 
-## Endpoints Existentes — Cambios de Acceso
-
-| Endpoint | Acceso actual | Acceso nuevo |
-|----------|--------------|--------------|
-| POST /chat | Público | Cualquier rol |
-| GET /chat/conversations | Público | Cualquier rol |
-| GET /chat/conversations/{id} | Público | Cualquier rol |
-| DELETE /chat/conversations/{id} | Público | Cualquier rol |
-| GET /documents | Público | Admin |
-| POST /documents/upload | Público | Admin |
-| GET /documents/{id} | Público | Admin |
-| DELETE /documents/{id} | Público | Admin |
-| POST /documents/sync | Público | Admin |
-
----
-
-## Flujo de Autenticación
+## Flujo de Login
 
 ```
 1. Login
    POST /auth/login {email, password}
-   → Verificar credenciales
-   → Generar JWT con {user_id, role, exp}
-   → Retornar {access_token, token_type, user}
+   → Buscar usuario por email en BD
+   → Comparar password (texto plano)
+   → Retornar {user, message}
 
-2. Request protegido
-   Header: Authorization: Bearer <token>
-   → Backend decodifica JWT
-   → Extrae user_id y role
-   → Si no tiene permiso → 403 Forbidden
-   → Si token inválido/expirado → 401 Unauthorized
-
-3. Frontend
-   → Guardar token en localStorage
-   → Enviar token en cada request via interceptor
-   → Si recibe 401 → limpiar token, redirigir a /login
+2. Frontend
+   → Guardar user_id en localStorage
+   → Usar user_id para /auth/me
 ```
 
 ---
 
-# TAREAS POR INTEGRANTE
+# INTEGRANTE 1: Backend & Core Engineer
+
+**Responsable:** Modelo de datos, endpoints de auth y usuarios.
+
+**Estado:** ✅ COMPLETADO
 
 ---
 
-## INTEGRANTE 1: Backend & Core Engineer
+### Tarea 1: Modelo de Usuario
 
-**Responsable:** Modelos, autenticación, endpoints protegidos, hashing de contraseñas.
+**Archivo:** `backend/models/user.py` (creado)
 
-### Tarea 1: Dependencias
+Modelo User con SQLAlchemy:
+- id, nombre, email, password (texto plano), role, is_active, created_at
 
-Agregar a `requirements.txt`:
-```
-passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
-```
-
-Ejecutar:
-```bash
-pip install -r requirements.txt
-```
+**Estado:** ✅ Completado
 
 ---
 
-### Tarea 2: Modelo de Usuario
+### Tarea 2: Schemas de Usuario
 
-**Archivo:** `backend/models/user.py` (nuevo)
-
-Crear clase `User` con SQLAlchemy:
-
-```python
-class User(Base):
-    __tablename__ = "users"
-
-    id = mapped_column(Integer, primary_key=True, index=True)
-    nombre = mapped_column(String, nullable=False)
-    email = mapped_column(String, unique=True, index=True, nullable=False)
-    hashed_password = mapped_column(String, nullable=False)
-    role = mapped_column(String, nullable=False, default="empleado")
-    is_active = mapped_column(Boolean, default=True)
-    created_at = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-```
-
----
-
-### Tarea 3: Schemas de Usuario
-
-**Archivo:** `backend/schemas/user.py` (nuevo)
-
-Crear schemas Pydantic:
+**Archivo:** `backend/schemas/user.py` (creado)
 
 | Schema | Campos |
 |--------|--------|
-| `UserCreate` | nombre, email, password (str plano), role |
-| `UserUpdate` | nombre (opt), email (opt), role (opt) |
+| `UserCreate` | nombre, email, password, role |
+| `UserUpdate` | nombre (opt), email (opt), role (opt), is_active (opt) |
 | `UserResponse` | id, nombre, email, role, is_active, created_at |
+| `UserListResponse` | total, users |
 | `LoginRequest` | email, password |
-| `LoginResponse` | access_token, token_type, user (UserResponse) |
+| `LoginResponse` | user, message |
+
+**Estado:** ✅ Completado
 
 ---
 
-### Tarea 4: Servicio de Auth
+### Tarea 3: Servicio de Auth
 
-**Archivo:** `backend/services/auth.py` (nuevo)
-
-Crear clase `AuthService` con métodos estáticos:
+**Archivo:** `backend/services/auth.py` (creado)
 
 | Método | Parámetros | Retorna |
 |--------|-----------|---------|
-| `hash_password(password: str)` | contraseña en texto plano | hash bcrypt |
-| `verify_password(plain: str, hashed: str)` | texto plano + hash | bool |
-| `create_access_token(user_id: int, role: str)` | ID y rol del usuario | JWT string (exp: 24h) |
-| `decode_access_token(token: str)` | token JWT | dict {user_id, role} |
+| `authenticate_user(db, email, password)` | email + password | User o None |
 
-Secret key: `os.getenv("JWT_SECRET", "clave-secreta-por-defecto-cambiar")`
+**Estado:** ✅ Completado
 
 ---
 
-### Tarea 5: Router de Auth
+### Tarea 4: Router de Auth
 
-**Archivo:** `backend/routers/auth.py` (nuevo)
+**Archivo:** `backend/routers/auth.py` (creado)
 
 | Endpoint | Método | Lógica |
 |----------|--------|--------|
-| `/auth/login` | POST | Buscar usuario por email, verificar password, retornar JWT |
-| `/auth/me` | GET | Requerir token, retornar usuario autenticado |
+| `/auth/login` | POST | Buscar usuario, comparar password, retornar usuario |
+| `/auth/me` | GET | Buscar usuario por ID |
+
+**Estado:** ✅ Completado
 
 ---
 
-### Tarea 6: Router de Usuarios
+### Tarea 5: Router de Usuarios
 
-**Archivo:** `backend/routers/users.py` (nuevo)
-
-Todos los endpoints requieren role=admin.
+**Archivo:** `backend/routers/users.py` (creado)
 
 | Endpoint | Método | Lógica |
 |----------|--------|--------|
 | `/users` | GET | Listar todos los usuarios |
-| `/users` | POST | Crear usuario (hashear password antes de guardar) |
+| `/users` | POST | Crear usuario |
 | `/users/{id}` | PUT | Editar usuario (campos opcionales) |
 | `/users/{id}` | DELETE | Eliminar usuario |
 
----
-
-### Tarea 7: Dependencia de Autenticación
-
-**Archivo:** `backend/services/auth.py` (agregar)
-
-Crear función dependencia `get_current_user`:
-1. Leer header `Authorization: Bearer <token>`
-2. Decodificar JWT
-3. Buscar usuario en BD por user_id
-4. Si no hay token → 401
-5. Si token inválido → 401
-6. Si usuario no existe o inactivo → 401
-7. Retorna el usuario
-
-Crear función dependencia `require_admin`:
-1. Llamar a `get_current_user`
-2. Si role != "admin" → 403
+**Estado:** ✅ Completado
 
 ---
 
-### Tarea 8: Proteger Endpoints Existentes
+### Tarea 6: Integrar en main.py
 
-**Archivos a modificar:**
+**Archivo:** `backend/main.py` (modificado)
 
-| Archivo | Cambio |
-|---------|--------|
-| `backend/routers/chat.py` | Agregar `user: User = Depends(get_current_user)` en POST /chat, GET /conversations, GET /conversations/{id}, DELETE /conversations/{id} |
-| `backend/routers/documents.py` | Agregar `user: User = Depends(require_admin)` en TODOS los endpoints |
-| `backend/routers/sync.py` | Agregar `user: User = Depends(require_admin)` en POST /sync |
+- Importar y registrar routers (auth, users)
+- Crear admin por defecto en lifespan
 
----
-
-### Tarea 9: Admin por Defecto
-
-**Archivo:** `backend/main.py` (modificar)
-
-En la función `lifespan`, después de `Base.metadata.create_all()`:
-```python
-from backend.models.user import User
-from backend.services.auth import AuthService
-
-db = SessionLocal()
-admin = db.query(User).filter(User.role == "admin").first()
-if not admin:
-    db.add(User(
-        nombre="Admin",
-        email="admin@policylens.com",
-        hashed_password=AuthService.hash_password("admin123"),
-        role="admin"
-    ))
-    db.commit()
-db.close()
-```
-
----
-
-### Tarea 10: Registrar Routers
-
-**Archivo:** `backend/main.py` (modificar)
-
-Agregar imports y registros:
-```python
-from backend.routers.auth import router as auth_router
-from backend.routers.users import router as users_router
-
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(users_router, prefix="/users", tags=["Users"])
-```
-
----
-
-### Tarea 11: Variable de Entorno
-
-**Archivos a modificar:**
-
-`.env` — agregar:
-```
-JWT_SECRET=politlens-ai-jwt-secret-2026-cambiar-en-produccion
-```
-
-`.env.example` — agregar:
-```
-JWT_SECRET=tu-clave-secreta-aqui
-```
+**Estado:** ✅ Completado
 
 ---
 
 ### Archivos del Integrante 1
 
-| Tipo | Archivo |
-|------|---------|
-| Crear | `backend/models/user.py` |
-| Crear | `backend/schemas/user.py` |
-| Crear | `backend/services/auth.py` |
-| Crear | `backend/routers/auth.py` |
-| Crear | `backend/routers/users.py` |
-| Modificar | `requirements.txt` |
-| Modificar | `.env` |
-| Modificar | `.env.example` |
-| Modificar | `backend/main.py` |
-| Modificar | `backend/routers/chat.py` |
-| Modificar | `backend/routers/documents.py` |
-| Modificar | `backend/routers/sync.py` |
+| Tipo | Archivo | Estado |
+|------|---------|--------|
+| Crear | `backend/models/user.py` | ✅ |
+| Crear | `backend/schemas/user.py` | ✅ |
+| Crear | `backend/services/auth.py` | ✅ |
+| Crear | `backend/routers/auth.py` | ✅ |
+| Crear | `backend/routers/users.py` | ✅ |
+| Modificar | `backend/models/__init__.py` | ✅ |
+| Modificar | `backend/main.py` | ✅ |
 
 ---
 
-## INTEGRANTE 2: Frontend & Integration Lead
+# INTEGRANTE 2: Frontend & Integration Lead
 
 **Responsable:** Login, rutas protegidas, sidebar dinámico, página de usuarios.
+
+**Estado:** PENDIENTE
+
+---
 
 ### Tarea 1: Servicio de Auth
 
@@ -323,39 +202,14 @@ Crear funciones:
 
 | Función | Llamada | Almacenamiento |
 |---------|---------|----------------|
-| `login(email, password)` | POST `/auth/login` | Guardar token en `localStorage` |
-| `logout()` | — | Eliminar token de `localStorage` |
-| `getUsuarioActual()` | GET `/auth/me` | — |
-| `getToken()` | — | Leer token de `localStorage` |
+| `login(email, password)` | POST `/auth/login` | Guardar user_id en `localStorage` |
+| `logout()` | — | Eliminar user_id de `localStorage` |
+| `getUsuarioActual()` | GET `/auth/me?user_id=...` | — |
+| `getUser_id()` | — | Leer user_id de `localStorage` |
 
 ---
 
-### Tarea 2: Interceptor JWT
-
-**Archivo:** `frontend/src/services/api.ts` (modificar)
-
-Agregar interceptor de **request**:
-```typescript
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-```
-
-Agregar en interceptor de **response** (error):
-```typescript
-if (error.response?.status === 401) {
-  localStorage.removeItem('token')
-  window.location.href = '/login'
-}
-```
-
----
-
-### Tarea 3: Contexto de Autenticación
+### Tarea 2: Contexto de Autenticación
 
 **Archivo:** `frontend/src/context/AuthContext.tsx` (nuevo)
 
@@ -364,18 +218,18 @@ Crear contexto que provea:
 | Propiedad | Tipo | Descripción |
 |-----------|------|-------------|
 | `user` | `User \| null` | Usuario autenticado |
-| `isAuthenticated` | `bool` | Hay token válido |
+| `isAuthenticated` | `bool` | Hay user_id en localStorage |
 | `isAdmin` | `bool` | role === "admin" |
-| `login(email, password)` | `Promise<void>` | Login y guardar token |
-| `logout()` | `void` | Logout y limpiar token |
+| `login(email, password)` | `Promise<void>` | Login y guardar user_id |
+| `logout()` | `void` | Logout y limpiar |
 
 Al montar:
-- Si hay token en localStorage → llamar GET `/auth/me` para validar
-- Si token inválido → limpiar y redirigir a `/login`
+- Si hay user_id en localStorage → llamar GET `/auth/me` para validar
+- Si user_id inválido → limpiar y redirigir a `/login`
 
 ---
 
-### Tarea 4: Página de Login
+### Tarea 3: Página de Login
 
 **Archivo:** `frontend/src/pages/LoginPage.tsx` (nuevo)
 
@@ -390,14 +244,14 @@ Diseño: centrado, fondo neutro, card blanca con sombra.
 
 ---
 
-### Tarea 5: Rutas Protegidas
+### Tarea 4: Rutas Protegidas
 
 **Archivo:** `frontend/src/App.tsx` (modificar)
 
 Crear componente `ProtectedRoute`:
 ```typescript
 function ProtectedRoute({ children, adminOnly = false }) {
-  // Si no hay token → redirigir a /login
+  // Si no hay user_id → redirigir a /login
   // Si adminOnly y no es admin → redirigir a /chat
   // Si todo OK → renderizar children
 }
@@ -414,7 +268,7 @@ Nueva estructura de rutas:
 
 ---
 
-### Tarea 6: Sidebar Dinámico
+### Tarea 5: Sidebar Dinámico
 
 **Archivo:** `frontend/src/components/Sidebar.tsx` (modificar)
 
@@ -429,7 +283,7 @@ Agregar abajo:
 
 ---
 
-### Tarea 7: Servicio de Usuarios
+### Tarea 6: Servicio de Usuarios
 
 **Archivo:** `frontend/src/services/users.ts` (nuevo)
 
@@ -442,7 +296,7 @@ Agregar abajo:
 
 ---
 
-### Tarea 8: Página de Usuarios
+### Tarea 7: Página de Usuarios
 
 **Archivo:** `frontend/src/pages/UsersPage.tsx` (nuevo)
 
@@ -455,7 +309,7 @@ Crear interfaz:
 
 ---
 
-### Tarea 9: Modal de Usuarios
+### Tarea 8: Modal de Usuarios
 
 **Archivo:** `frontend/src/components/UserModal.tsx` (nuevo)
 
@@ -468,7 +322,7 @@ Crear modal con formulario:
 
 ---
 
-### Tarea 10: Layout Actualizado
+### Tarea 9: Layout Actualizado
 
 **Archivo:** `frontend/src/components/Layout.tsx` (modificar)
 
@@ -480,73 +334,81 @@ Crear modal con formulario:
 
 ### Archivos del Integrante 2
 
-| Tipo | Archivo |
-|------|---------|
-| Crear | `frontend/src/services/auth.ts` |
-| Crear | `frontend/src/services/users.ts` |
-| Crear | `frontend/src/context/AuthContext.tsx` |
-| Crear | `frontend/src/pages/LoginPage.tsx` |
-| Crear | `frontend/src/pages/UsersPage.tsx` |
-| Crear | `frontend/src/components/UserModal.tsx` |
-| Modificar | `frontend/src/services/api.ts` |
-| Modificar | `frontend/src/App.tsx` |
-| Modificar | `frontend/src/components/Sidebar.tsx` |
-| Modificar | `frontend/src/components/Layout.tsx` |
+| Tipo | Archivo | Estado |
+|------|---------|--------|
+| Crear | `frontend/src/services/auth.ts` | PENDIENTE |
+| Crear | `frontend/src/services/users.ts` | PENDIENTE |
+| Crear | `frontend/src/context/AuthContext.tsx` | PENDIENTE |
+| Crear | `frontend/src/pages/LoginPage.tsx` | PENDIENTE |
+| Crear | `frontend/src/pages/UsersPage.tsx` | PENDIENTE |
+| Crear | `frontend/src/components/UserModal.tsx` | PENDIENTE |
+| Modificar | `frontend/src/App.tsx` | PENDIENTE |
+| Modificar | `frontend/src/components/Sidebar.tsx` | PENDIENTE |
+| Modificar | `frontend/src/components/Layout.tsx` | PENDIENTE |
 
 ---
 
-## INTEGRANTE 3: AI & Data Pipeline Architect
+# INTEGRANTE 3: AI & Data Pipeline Architect
 
-**Responsable:** Integración auth + RAG, documentación, pruebas, verificación.
+**Responsable:** Integración auth + RAG, protección de endpoints, verificación.
 
-### Tarea 1: Verificar Pipeline RAG + Auth
+**Estado:** PENDIENTE
+
+---
+
+### Tarea 1: Proteger Endpoints por Rol
+
+**Archivos a modificar:**
+- `backend/routers/documents.py`
+- `backend/routers/sync.py`
+- `backend/routers/chat.py`
+
+**Objetivo:** Controlar quién puede acceder a cada endpoint según su rol.
+
+| Endpoint | Rol requerido | Lógica |
+|----------|---------------|--------|
+| GET /documents | Admin | Solo admin ve documentos |
+| POST /documents/upload | Admin | Solo admin sube documentos |
+| GET /documents/{id} | Admin | Solo admin ve detalle |
+| DELETE /documents/{id} | Admin | Solo admin borra |
+| POST /documents/sync | Admin | Solo admin sincroniza |
+| POST /chat | Cualquier rol | Todos pueden preguntar |
+| GET /chat/conversations | Cualquier rol | Todos ven sus conversaciones |
+| GET /chat/conversations/{id} | Cualquier rol | Todos ven detalle |
+| DELETE /chat/conversations/{id} | Cualquier rol | Todos pueden borrar |
+
+**Implementación:**
+
+1. Agregar parámetro `user_id` a endpoints protegidos
+2. Buscar usuario en BD y verificar rol
+3. Si no tiene permiso → retornar 403
+
+---
+
+### Tarea 2: Verificar Pipeline RAG + Auth
 
 Verificar que:
-- `POST /chat` funciona con el middleware de autenticación
+- `POST /chat` funciona correctamente
 - `RAGService.preguntar()` no se ve afectado por el cambio
 - Las conversaciones se guardan correctamente
 
 ---
 
-### Tarea 2: Guardar usuario en conversaciones (Opcional)
-
-**Archivos a modificar:**
-
-`backend/models/conversation.py` — agregar campo:
-```python
-user_id: Mapped[Optional[int]] = mapped_column(
-    Integer, ForeignKey("users.id"), nullable=True
-)
-```
-
-`backend/services/rag.py` — en método `preguntar()`:
-- Recibir `user_id` como parámetro
-- Guardarlo en la conversación
-
-`backend/routers/chat.py`:
-- `GET /chat/conversations` → filtrar por usuario (admin ve todas)
-- `GET /chat/conversations/{id}` → verificar propiedad (admin ve todas)
-
----
-
 ### Tarea 3: Verificar Protección de Endpoints
 
-Probar con curl o Thunder Client:
+Probar con curl:
 
 ```bash
-# Sin token → debe retornar 401
-curl -X POST http://localhost:8000/chat -H "Content-Type: application/json" -d '{"question":"test"}'
-
-# Con token de empleado → debe funcionar en chat
-TOKEN_EMPLEADO="..."
-curl -X POST http://localhost:8000/chat -H "Authorization: Bearer $TOKEN_EMPLEADO" -H "Content-Type: application/json" -d '{"question":"test"}'
-
-# Con token de empleado → debe retornar 403 en documentos
-curl -X GET http://localhost:8000/documents -H "Authorization: Bearer $TOKEN_EMPLEADO"
-
-# Con token de admin → debe funcionar en todo
+# Admin puede acceder a documentos
 TOKEN_ADMIN="..."
-curl -X GET http://localhost:8000/documents -H "Authorization: Bearer $TOKEN_ADMIN"
+curl -X GET http://localhost:8000/documents -H "user_id: 1"
+
+# Empleado NO puede acceder a documentos
+curl -X GET http://localhost:8000/documents -H "user_id: 2"
+# → debe retornar 403
+
+# Cualquiera puede usar chat
+curl -X POST http://localhost:8000/chat -H "Content-Type: application/json" -d '{"question":"test"}'
 ```
 
 ---
@@ -555,10 +417,9 @@ curl -X GET http://localhost:8000/documents -H "Authorization: Bearer $TOKEN_ADM
 
 Verificar que:
 - El login funciona correctamente
-- El JWT se envía en todas las peticiones
+- El user_id se guarda en localStorage
 - El admin ve todas las páginas
 - El empleado solo ve chat
-- El 401 redirige al login
 - El sidebar es dinámico según el rol
 
 ---
@@ -570,7 +431,7 @@ Verificar que:
 `README.md`:
 - Sección de autenticación
 - Credenciales del admin por defecto
-- Endpoints protegidos y sus roles
+- Endpoints y sus roles
 - Flujo de login
 
 `CONTEXTO_GENERAL.md`:
@@ -583,56 +444,55 @@ Verificar que:
 ### Tarea 6: Verificar Variables de Entorno
 
 Verificar que:
-- `.env` tiene `JWT_SECRET`
-- `.env.example` tiene `JWT_SECRET` como ejemplo
+- `.env` tiene las variables correctas
 - `.gitignore` incluye `.env`
 
 ---
 
 ### Archivos del Integrante 3
 
-| Tipo | Archivo |
-|------|---------|
-| Modificar (opcional) | `backend/models/conversation.py` |
-| Modificar (opcional) | `backend/services/rag.py` |
-| Modificar | `README.md` |
-| Modificar | `CONTEXTO_GENERAL.md` |
-| Verificar | `.env` |
-| Verificar | `.env.example` |
-| Verificar | `.gitignore` |
+| Tipo | Archivo | Estado |
+|------|---------|--------|
+| Modificar | `backend/routers/documents.py` | PENDIENTE |
+| Modificar | `backend/routers/sync.py` | PENDIENTE |
+| Modificar | `backend/routers/chat.py` | PENDIENTE |
+| Modificar | `README.md` | PENDIENTE |
+| Modificar | `CONTEXTO_GENERAL.md` | PENDIENTE |
+| Verificar | `.env` | PENDIENTE |
+| Verificar | `.gitignore` | PENDIENTE |
 
 ---
 
-# ORDEN DE IMPLEMENTACIÓN RECOMENDADO
+# ORDEN DE IMPLEMENTACIÓN
 
 ```
-Fase 1 (Backend primero):
-  Tareas 1-11 del Integrante 1
-  → Verificar que auth funciona con curl
+Fase 1 (Backend - Integrante 1): ✅ COMPLETADA
+  Tareas 1-6
+  → Auth y CRUD usuarios funcionando
 
-Fase 2 (Frontend después):
-  Tareas 1-10 del Integrante 2
-  → Verificar login y rutas funcionan
+Fase 2 (Frontend - Integrante 2): PENDIENTE
+  Tareas 1-9
+  → Login, rutas protegidas, sidebar, página usuarios
 
-Fase 3 (Integración y pruebas):
-  Tareas 1-6 del Integrante 3
-  → Verificar todo el flujo completo
+Fase 3 (Integración - Integrante 3): PENDIENTE
+  Tareas 1-6
+  → Proteger endpoints, verificar RAG, documentación
 ```
 
 ---
 
 # VERIFICACIÓN FINAL
 
-El sistema debe cumplir:
-
-- [ ] Login funcional con JWT
-- [ ] Admin puede CRUD documentos
-- [ ] Admin puede CRUD usuarios
-- [ ] Admin puede sincronizar
-- [ ] Empleado solo puede hacer consultas
-- [ ] Sidebar dinámico según rol
-- [ ] 401 redirige al login
-- [ ] 403 deniega acceso no autorizado
-- [ ] Admin por defecto se crea automáticamente
-- [ ] Contraseñas hasheadas con bcrypt
-- [ ] JWT expira en 24 horas
+- [x] Modelo User creado
+- [x] Schemas Pydantic creados
+- [x] Servicio de auth creado
+- [x] Router de auth creado
+- [x] Router de usuarios CRUD creado
+- [x] Admin por defecto se crea automáticamente
+- [x] Login funcional (texto plano)
+- [ ] Backend: Endpoints protegidos por rol
+- [ ] Frontend: Login funcional
+- [ ] Frontend: Rutas protegidas
+- [ ] Frontend: Sidebar dinámico
+- [ ] Frontend: Página de usuarios
+- [ ] Documentación actualizada
