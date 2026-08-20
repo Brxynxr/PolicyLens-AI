@@ -4,6 +4,7 @@ import io
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 import fitz  # PyMuPDF
 import docx
 from sqlalchemy import create_engine
@@ -49,6 +50,16 @@ class TestDocumentsAndSync(unittest.TestCase):
         Base.metadata.drop_all(bind=test_engine)
 
     def setUp(self):
+        self.patcher_indexar = patch("backend.services.rag.RAGService.indexar_documento", return_value=None)
+        self.patcher_eliminar = patch("backend.services.rag.RAGService.eliminar_documento", return_value=None)
+        self.patcher_embedding = patch("backend.services.embeddings.EmbeddingService.generar_embedding", return_value=[0.1] * 1536)
+        self.patcher_embeddings_lote = patch("backend.services.embeddings.EmbeddingService.generar_embeddings_lote", side_effect=lambda textos: [[0.1] * 1536 for _ in textos])
+
+        self.mock_indexar = self.patcher_indexar.start()
+        self.mock_eliminar = self.patcher_eliminar.start()
+        self.mock_embedding = self.patcher_embedding.start()
+        self.mock_embeddings_lote = self.patcher_embeddings_lote.start()
+
         self.temp_dir = tempfile.mkdtemp()
         self.old_docs_dir_1 = docs_router_mod.DOCUMENTS_DIR
         self.old_docs_dir_2 = sync_router_mod.DOCUMENTS_DIR
@@ -57,6 +68,11 @@ class TestDocumentsAndSync(unittest.TestCase):
         self.db = TestingSessionLocal()
 
     def tearDown(self):
+        self.patcher_indexar.stop()
+        self.patcher_eliminar.stop()
+        self.patcher_embedding.stop()
+        self.patcher_embeddings_lote.stop()
+
         docs_router_mod.DOCUMENTS_DIR = self.old_docs_dir_1
         sync_router_mod.DOCUMENTS_DIR = self.old_docs_dir_2
         if os.path.exists(self.temp_dir):

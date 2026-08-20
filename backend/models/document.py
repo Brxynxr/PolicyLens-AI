@@ -10,7 +10,7 @@ class Document(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     original_name: Mapped[str] = mapped_column(String, nullable=False)
-    type: Mapped[str] = mapped_column(String, nullable=False)  # "pdf" o "docx"
+    type: Mapped[str] = mapped_column(String, nullable=False)  # "pdf", "docx", "html" o "htm"
     hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     size: Mapped[int] = mapped_column(Integer, nullable=False)  # en bytes
     upload_date: Mapped[datetime] = mapped_column(
