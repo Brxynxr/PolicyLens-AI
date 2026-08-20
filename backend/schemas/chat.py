@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class ChatRequest(BaseModel):
     question: str
     conversation_id: Optional[int] = None
+    mode: str = "rag"
 
 
 class SourceItem(BaseModel):

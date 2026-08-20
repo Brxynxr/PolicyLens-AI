@@ -1,40 +1,44 @@
-# Navegador Inteligente de Políticas y Contratos Internos
+# PolicyLens-AI — Navegador Inteligente de Politicas y Contratos Internos
 
-Aplicación web interna que permite a los empleados realizar preguntas en lenguaje natural sobre documentos empresariales (manuales de RRHH, contratos legales, políticas internas) utilizando un sistema RAG (Retrieval-Augmented Generation).
+Aplicacion web interna que permite a los empleados realizar preguntas en lenguaje natural sobre documentos empresariales (manuales de RRHH, contratos legales, politicas internas) utilizando un sistema RAG (Retrieval-Augmented Generation) con busqueda semantica local.
 
 ## Problema
 
-Los empleados pierden tiempo buscando información específica dentro de documentos extensos y difíciles de consultar.
+Los empleados pierden horas buscando informacion especifica dentro de manuales de recursos humanos, contratos legales y politicas internas densas y extensas.
 
-## Solución
+## Solucion
 
-Sistema RAG que:
-1. Carga documentos PDF y DOCX
-2. Extrae y fragmenta el texto
-3. Genera embeddings y los almacena en ChromaDB
-4. Responde preguntas usando los documentos como contexto
-5. Muestra las fuentes exactas utilizadas
+Un centro de consultas interno donde cualquier colaborador puede hacer preguntas complejas en lenguaje natural y obtener respuestas precisas acompanadas de las fuentes exactas y fragmentos de los documentos originales consultados.
 
-## Stack Tecnológico
+### Caracteristicas principales
+
+- **Consulta RAG con LLM**: Respuestas naturales generadas por un modelo de lenguaje basado en los documentos indexados
+- **Busqueda semantica local**: Fragmentos directos de la base vectorial sin intervencion de LLM (mas rapido)
+- **Sistema de roles**: Admin (CRUD documentos, usuarios, sincronizacion) y Empleado (solo consultas)
+- **Sincronizacion automatica**: Detecta documentos nuevos o modificados mediante hash SHA-256
+- **Soporte multi-formato**: PDF (PyMuPDF), DOCX (python-docx), HTML
+
+## Stack Tecnologico
 
 **Backend:**
-- Python + FastAPI
-- SQLite (metadata)
+- Python 3.12 + FastAPI
+- SQLite + SQLAlchemy (metadata)
 - ChromaDB (almacenamiento vectorial)
-- PyMuPDF (extracción de PDF)
-- python-docx (extracción de DOCX)
+- sentence-transformers (embeddings locales)
+- PyMuPDF (extraccion de PDF)
+- python-docx (extraccion de DOCX)
 
 **Frontend:**
-- React + TypeScript
-- Tailwind CSS
+- React 19 + TypeScript
+- Tailwind CSS v4
 - Vite
+- React Router
 
 **IA:**
-- Proveedor LLM compatible con OpenAI (desacoplado)
-- Proveedor de Embeddings compatible con OpenAI (desacoplado)
-- Configurado con NVIDIA NIM (meta/llama-3.1-8b-instruct + nvidia/nv-embedqa-e5-v5)
+- LLM: NVIDIA NIM API (meta/llama-3.1-8b-instruct) — desacoplado
+- Embeddings: sentence-transformers local (paraphrase-multilingual-MiniLM-L12-v2)
 
-## Instalación
+## Instalacion
 
 ```bash
 # Clonar el repositorio
@@ -50,9 +54,9 @@ pip install -r requirements.txt
 
 # Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus API keys (LLM_API_KEY, LLM_BASE_URL, etc.)
+# Editar .env con tus API keys
 
-# Ejecutar backend (desde la raíz del proyecto)
+# Ejecutar backend (desde la raiz del proyecto)
 uvicorn backend.main:app --reload
 
 # Ejecutar frontend (en otra terminal)
@@ -66,31 +70,59 @@ npm run dev
 ```
 PolicyLens-AI/
 ├── backend/
-│   ├── main.py              # Punto de entrada FastAPI
-│   ├── database.py          # Configuración SQLite
+│   ├── main.py              # Punto de entrada FastAPI + lifespan
+│   ├── database.py          # Configuracion SQLite
 │   ├── models/
 │   │   ├── document.py      # Modelo de documentos
-│   │   └── conversation.py  # Modelo de conversaciones
+│   │   ├── conversation.py  # Modelo de conversaciones
+│   │   └── user.py          # Modelo de usuarios
+│   ├── schemas/
+│   │   ├── chat.py          # Schemas de chat
+│   │   ├── document.py      # Schemas de documentos
+│   │   └── user.py          # Schemas de usuarios
 │   ├── services/
-│   │   ├── rag.py           # Orquestación RAG
-│   │   ├── documents.py     # Gestión de documentos
-│   │   ├── embeddings.py    # Generación de embeddings
-│   │   └── llm.py           # Integración con LLM
+│   │   ├── rag.py           # Orquestacion RAG (modo LLM + modo embeddings)
+│   │   ├── documents.py     # Gestion de documentos
+│   │   ├── embeddings.py    # Embeddings (API + local)
+│   │   ├── llm.py           # Integracion con LLM
+│   │   └── auth.py          # Servicio de autenticacion
 │   ├── routers/
 │   │   ├── documents.py     # Endpoints de documentos
 │   │   ├── chat.py          # Endpoints de chat
-│   │   └── sync.py          # Endpoint de sincronización
+│   │   ├── sync.py          # Endpoint de sincronizacion
+│   │   ├── auth.py          # Endpoints de login
+│   │   └── users.py         # Endpoints de usuarios
 │   └── utils/
-│       ├── pdf.py           # Extracción de PDF
-│       ├── chunking.py      # Fragmentación de texto
+│       ├── pdf.py           # Extraccion de PDF
+│       ├── docx.py          # Extraccion de DOCX
+│       ├── html.py          # Extraccion de HTML
+│       ├── chunking.py      # Fragmentacion de texto
 │       └── hashing.py       # Hash SHA-256
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Componentes reutilizables
-│   │   ├── pages/           # Páginas de la aplicación
-│   │   ├── services/        # Servicios API
-│   │   ├── App.tsx          # Componente raíz
-│   │   └── main.tsx         # Punto de entrada React
+│   │   ├── components/
+│   │   │   ├── Sidebar.tsx      # Barra lateral dinamica por rol
+│   │   │   ├── Layout.tsx       # Layout principal
+│   │   │   ├── ChatMessage.tsx   # Mensaje de chat
+│   │   │   ├── SourceCard.tsx    # Card de fuentes
+│   │   │   ├── DocumentCard.tsx  # Card de documentos
+│   │   │   ├── FileUpload.tsx    # Subida de archivos
+│   │   │   └── UserModal.tsx     # Modal crear/editar usuario
+│   │   ├── pages/
+│   │   │   ├── LoginPage.tsx     # Pagina de login
+│   │   │   ├── ChatPage.tsx      # Chat con selector de modo
+│   │   │   ├── DocumentsPage.tsx # Gestion de documentos
+│   │   │   ├── UsersPage.tsx     # Gestion de usuarios
+│   │   │   └── SyncPage.tsx      # Sincronizacion
+│   │   ├── services/
+│   │   │   ├── api.ts            # Instancia axios
+│   │   │   ├── chat.ts           # Servicio de chat
+│   │   │   ├── documents.ts      # Servicio de documentos
+│   │   │   ├── users.ts          # Servicio de usuarios
+│   │   │   └── sync.ts           # Servicio de sincronizacion
+│   │   ├── types/index.ts        # Tipos TypeScript
+│   │   ├── App.tsx               # Rutas y proteccion
+│   │   └── main.tsx              # Entrada React
 │   └── package.json
 ├── documents/               # Documentos cargados
 ├── chroma_data/             # Datos de ChromaDB
@@ -101,17 +133,69 @@ PolicyLens-AI/
 
 ## API Endpoints
 
-| Método | Ruta | Descripción |
+### Autenticacion
+
+| Metodo | Ruta | Descripcion | Rol |
+|--------|------|-------------|-----|
+| POST | `/auth/login` | Login simple | Publico |
+| GET | `/auth/me` | Obtener usuario por ID | Publico |
+
+### Usuarios
+
+| Metodo | Ruta | Descripcion | Rol |
+|--------|------|-------------|-----|
+| GET | `/users` | Listar usuarios | Admin |
+| POST | `/users` | Crear usuario | Admin |
+| PUT | `/users/{id}` | Editar usuario | Admin |
+| DELETE | `/users/{id}` | Eliminar usuario | Admin |
+
+### Documentos
+
+| Metodo | Ruta | Descripcion | Rol |
+|--------|------|-------------|-----|
+| GET | `/documents` | Listar documentos | Admin |
+| POST | `/documents/upload` | Subir documento | Admin |
+| GET | `/documents/{id}` | Obtener documento | Admin |
+| DELETE | `/documents/{id}` | Eliminar documento | Admin |
+| POST | `/documents/sync` | Sincronizar documentos | Admin |
+
+### Chat
+
+| Metodo | Ruta | Descripcion | Rol |
+|--------|------|-------------|-----|
+| POST | `/chat` | Enviar pregunta | Todos |
+| GET | `/chat/conversations` | Listar conversaciones | Todos |
+| GET | `/chat/conversations/{id}` | Obtener conversacion | Todos |
+| DELETE | `/chat/conversations/{id}` | Eliminar conversacion | Todos |
+
+### Otros
+
+| Metodo | Ruta | Descripcion |
 |--------|------|-------------|
 | GET | `/health` | Verificar estado del servidor |
-| GET | `/documents` | Listar documentos |
-| POST | `/documents/upload` | Subir documento |
-| GET | `/documents/{id}` | Obtener documento |
-| DELETE | `/documents/{id}` | Eliminar documento |
-| POST | `/documents/sync` | Sincronizar documentos |
-| POST | `/chat` | Enviar pregunta |
-| GET | `/chat/conversations` | Listar conversaciones |
-| GET | `/chat/conversations/{id}` | Obtener conversación |
+
+## Modos de Consulta
+
+### RAG + LLM (modo por defecto)
+
+```
+Pregunta -> Embedding local -> ChromaDB -> Fragmentos relevantes -> LLM (API) -> Respuesta natural
+```
+
+- Velocidad: ~1-5 segundos (depende de la API)
+- Genera respuestas naturales interpretadas por el LLM
+- Siempre cita las fuentes utilizadas
+
+### Solo Embeddings (modo rapido)
+
+```
+Pregunta -> Embedding local -> ChromaDB -> Fragmentos directos
+```
+
+- Velocidad: ~20-30ms (todo local)
+- Muestra los fragmentos mas relevantes directamente
+- Sin interpretacion de LLM
+- Ideal para verificar que la busqueda semantica funciona correctamente
 
 ## Variables de Entorno
 
@@ -126,8 +210,16 @@ DATABASE_URL=sqlite:///./sql_app.db
 CORS_ORIGINS=http://localhost:5173
 ```
 
+## Credenciales por Defecto
+
+| Campo | Valor |
+|-------|-------|
+| Email | admin@policylens.com |
+| Password | admin123 |
+| Rol | admin |
+
 ## Desarrollado por
 
-- Integrante 1
-- Integrante 2
-- Integrante 3
+- Integrante 1 — Backend & Core Engineer
+- Integrante 2 — AI & Data Pipeline Architect
+- Integrante 3 — Frontend & Integration Lead

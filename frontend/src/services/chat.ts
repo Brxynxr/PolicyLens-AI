@@ -17,11 +17,13 @@ export async function obtenerConversacion(id: number): Promise<Conversation | nu
 
 export async function enviarPregunta(
   pregunta: string,
-  conversationId?: number
+  conversationId?: number,
+  mode: string = 'rag'
 ): Promise<{ chatResponse: ChatResponse; conversationId: number; messageUser: Message; messageAssistant: Message }> {
   const res = await api.post('/chat', {
     question: pregunta,
-    conversation_id: conversationId || undefined
+    conversation_id: conversationId || undefined,
+    mode: mode
   }) as any
 
   const messageUser: Message = {

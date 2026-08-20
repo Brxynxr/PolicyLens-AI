@@ -15,13 +15,12 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [listLoading, setListLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [mode, setMode] = useState<'rag' | 'search'>('rag')
   
-  // Track sources of the last assistant reply dynamically in state
   const [activeSources, setActiveSources] = useState<Record<number, ChatSource[]>>({})
 
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Fetch all chats on load
   const loadConversations = async (selectId?: number) => {
     try {
       setListLoading(true)
@@ -29,12 +28,10 @@ export default function ChatPage() {
       setConversations(data)
       
       if (data.length > 0) {
-        // Select either the requested chat, or the latest active one
         const idToSelect = selectId || data[0].id
         const fullChat = await obtenerConversacion(idToSelect)
         setActiveConv(fullChat)
       } else {
-        // No chats exist
         setActiveConv(null)
       }
     } catch {
@@ -48,7 +45,6 @@ export default function ChatPage() {
     loadConversations()
   }, [])
 
-  // Scroll to bottom helper
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -57,29 +53,26 @@ export default function ChatPage() {
     scrollToBottom()
   }, [activeConv?.messages, loading])
 
-  // Start new conversation
   const handleNewChat = () => {
     setActiveConv(null)
     setInputMsg('')
   }
 
-  // Select another conversation
   const handleSelectChat = async (id: number) => {
     try {
       setLoading(true)
       const fullChat = await obtenerConversacion(id)
       setActiveConv(fullChat)
     } catch {
-      setError('Error al recuperar la conversación.')
+      setError('Error al recuperar la conversacion.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Delete chat conversation
   const handleDeleteChat = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation()
-    if (!window.confirm('¿Deseas eliminar este chat?')) return
+    if (!window.confirm('Deseas eliminar este chat?')) return
     try {
       await eliminarConversacion(id)
       if (activeConv?.id === id) {
@@ -87,11 +80,10 @@ export default function ChatPage() {
       }
       loadConversations()
     } catch {
-      setError('Error al eliminar la conversación.')
+      setError('Error al eliminar la conversacion.')
     }
   }
 
-  // Submit message
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputMsg.trim() || loading) return
@@ -101,7 +93,6 @@ export default function ChatPage() {
     setLoading(true)
     setError(null)
 
-    // Optimistic user UI update
     const tempUserMsg: Message = {
       id: Date.now(),
       conversation_id: activeConv?.id || 0,
@@ -124,12 +115,10 @@ export default function ChatPage() {
     }
 
     try {
-      const res = await enviarPregunta(userText, activeConv?.id || undefined)
+      const res = await enviarPregunta(userText, activeConv?.id || undefined, mode)
       
-      // Update conversations list with the new/updated entry
       await loadConversations(res.conversationId)
       
-      // Store sources mapping
       if (res.chatResponse.sources.length > 0) {
         setActiveSources(prev => ({
           ...prev,
@@ -137,7 +126,7 @@ export default function ChatPage() {
         }))
       }
     } catch (err: any) {
-      setError(err.message || 'Error al procesar la respuesta RAG.')
+      setError(err.message || 'Error al procesar la respuesta.')
     } finally {
       setLoading(false)
     }
@@ -153,10 +142,10 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] md:h-[calc(100vh-4.5rem)] gap-6 overflow-hidden">
-      {/* Internal panel for conversation list history */}
+      {/* Conversation history panel */}
       <div className="hidden lg:flex flex-col w-72 bg-white rounded-2xl border border-brand-200 overflow-hidden shrink-0 animate-fade-in-right shadow-2xs">
         <div className="p-4 border-b border-brand-200 bg-brand-50/30 flex justify-between items-center">
-          <h2 className="font-bold text-neutral-800 text-sm">Historial de Consultas</h2>
+          <h2 className="font-bold text-neutral-800 text-sm">Historial</h2>
           <button 
             onClick={handleNewChat}
             className="p-1.5 rounded-lg border border-brand-200 bg-white hover:bg-brand-50 text-gold-600 hover:text-gold-700 transition-all font-medium text-xs flex items-center gap-1"
@@ -170,7 +159,7 @@ export default function ChatPage() {
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
           {listLoading ? (
-            <div className="p-4 text-center text-xs text-neutral-400">Cargando historial...</div>
+            <div className="p-4 text-center text-xs text-neutral-400">Cargando...</div>
           ) : conversations.length === 0 ? (
             <div className="p-6 text-center text-xs text-neutral-400 italic">No hay consultas previas</div>
           ) : (
@@ -205,10 +194,42 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Main chat window container */}
+      {/* Main chat container */}
       <div className="flex flex-col flex-1 bg-white rounded-2xl border border-brand-200 overflow-hidden relative shadow-xs animate-scale-up">
-        
 
+        {/* Mode selector bar */}
+        <div className="px-4 py-2.5 border-b border-brand-200 bg-brand-50/30 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Modo:</span>
+            <div className="flex bg-white rounded-lg border border-brand-200 p-0.5">
+              <button
+                onClick={() => setMode('rag')}
+                className={`
+                  px-3 py-1.5 rounded-md text-xs font-bold transition-all
+                  ${mode === 'rag'
+                    ? 'bg-gold-500 text-white shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-700'}
+                `}
+              >
+                RAG + LLM
+              </button>
+              <button
+                onClick={() => setMode('search')}
+                className={`
+                  px-3 py-1.5 rounded-md text-xs font-bold transition-all
+                  ${mode === 'search'
+                    ? 'bg-gold-500 text-white shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-700'}
+                `}
+              >
+                Solo Embeddings
+              </button>
+            </div>
+          </div>
+          <span className="text-2xs text-neutral-400 font-medium hidden sm:block">
+            {mode === 'rag' ? 'Respuesta generada por LLM' : 'Fragmentos directos de la base vectorial'}
+          </span>
+        </div>
 
         {/* Chat Feed */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
@@ -219,24 +240,24 @@ export default function ChatPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-neutral-900 leading-tight">¿Qué deseas consultar hoy?</h3>
+              <h3 className="text-lg font-bold text-neutral-900 leading-tight">¿Que deseas consultar hoy?</h3>
               <p className="text-sm text-neutral-500 mt-2 leading-relaxed font-medium">
-                Realiza consultas en lenguaje natural sobre políticas de recursos humanos, contratos y reglamentos internos de la compañía.
+                Realiza consultas en lenguaje natural sobre politicas, contratos y reglamentos internos.
               </p>
               
               <div className="mt-8 grid grid-cols-1 gap-3.5 w-full">
                 <button 
-                  onClick={() => setInputMsg('¿Cuántos días de vacaciones me corresponden por año?')}
+                  onClick={() => setInputMsg('¿Cuantos dias de vacaciones me corresponden por ano?')}
                   className="px-4 py-3 text-left rounded-xl border border-brand-200 hover:border-gold-300 hover:bg-brand-50/20 text-xs font-semibold text-neutral-700 transition-all flex items-center justify-between"
                 >
-                  <span>¿Cuántos días de vacaciones me corresponden?</span>
+                  <span>¿Cuantos dias de vacaciones me corresponden?</span>
                   <span className="text-gold-500">&rarr;</span>
                 </button>
                 <button 
-                  onClick={() => setInputMsg('¿Cuál es la política sobre el teletrabajo híbrido?')}
+                  onClick={() => setInputMsg('¿Cual es la politica sobre el teletrabajo hibrido?')}
                   className="px-4 py-3 text-left rounded-xl border border-brand-200 hover:border-gold-300 hover:bg-brand-50/20 text-xs font-semibold text-neutral-700 transition-all flex items-center justify-between"
                 >
-                  <span>¿Cuál es la política de teletrabajo híbrido?</span>
+                  <span>¿Cual es la politica de teletrabajo hibrido?</span>
                   <span className="text-gold-500">&rarr;</span>
                 </button>
               </div>
@@ -281,14 +302,14 @@ export default function ChatPage() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Input Bar Form */}
+        {/* Input Bar */}
         <form onSubmit={handleSend} className="p-4 border-t border-brand-200 bg-brand-50/20">
           <div className="flex gap-3">
             <input
               type="text"
               value={inputMsg}
               onChange={(e) => setInputMsg(e.target.value)}
-              placeholder="Realiza una pregunta sobre las políticas..."
+              placeholder={mode === 'rag' ? 'Pregunta al LLM sobre los documentos...' : 'Busca fragmentos en la base vectorial...'}
               className="flex-1 px-4 py-3.5 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800"
               disabled={loading}
             />
@@ -302,7 +323,7 @@ export default function ChatPage() {
                   : 'bg-gold-500 hover:bg-gold-600 shadow-gold-500/20 hover:scale-[1.02]'}
               `}
             >
-              <span>Consultar</span>
+              <span>{mode === 'rag' ? 'Consultar' : 'Buscar'}</span>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
