@@ -35,7 +35,7 @@ Un centro de consultas interno donde cualquier colaborador puede hacer preguntas
 - React Router
 
 **IA:**
-- LLM: NVIDIA NIM API (meta/llama-3.1-8b-instruct) — desacoplado
+- LLM: Dual — NVIDIA NIM API (meta/llama-3.1-8b-instruct) u Ollama local (qwen2.5:3b)
 - Embeddings: sentence-transformers local (paraphrase-multilingual-MiniLM-L12-v2)
 
 ## Instalacion
@@ -54,7 +54,11 @@ pip install -r requirements.txt
 
 # Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus API keys
+# Editar .env con tus API keys y configuracion de LLM
+
+# (Opcional) Para LLM local, instalar Ollama y descargar modelo:
+# curl -fsSL https://ollama.com/install.sh | sh
+# ollama pull qwen2.5:3b
 
 # Ejecutar backend (desde la raiz del proyecto)
 uvicorn backend.main:app --reload
@@ -202,12 +206,24 @@ Pregunta -> Embedding local -> ChromaDB -> Fragmentos directos
 El archivo `.env` debe contener:
 
 ```
+# Base de datos
+DATABASE_URL=sqlite:///./sql_app.db
+CORS_ORIGINS=http://localhost:5173
+
+# LLM: elegir proveedor con LLM_PROVIDER ("api" o "local")
+LLM_PROVIDER=local
+
+# Si LLM_PROVIDER=api (NVIDIA NIM):
 LLM_API_KEY=nvapi-...
 LLM_BASE_URL=https://integrate.api.nvidia.com/v1
 LLM_MODEL=meta/llama-3.1-8b-instruct
+
+# Si LLM_PROVIDER=local (Ollama):
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:3b
+
+# Embeddings (siempre local):
 EMBEDDING_MODEL=nvidia/nv-embedqa-e5-v5
-DATABASE_URL=sqlite:///./sql_app.db
-CORS_ORIGINS=http://localhost:5173
 ```
 
 ## Credenciales por Defecto

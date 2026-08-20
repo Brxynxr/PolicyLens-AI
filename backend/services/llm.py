@@ -5,25 +5,32 @@ import httpx
 
 class LLMService:
     """
-    Servicio desacoplado para generar respuestas vía LLM compatible con OpenAI.
-    Utiliza httpx para las peticiones HTTP.
+    Servicio desacoplado para generar respuestas via LLM.
+    Soporta dos modos:
+    - "api": Proveedor externo compatible con OpenAI (NVIDIA NIM, OpenAI, etc.)
+    - "local": Ollama local (gemma2:2b, qwen2.5, etc.)
     """
 
-    SYSTEM_PROMPT = """Eres un asistente corporativo de PolicyLens-AI que responde preguntas sobre documentos internos y políticas.
+    SYSTEM_PROMPT = """Eres PolicyLens AI, un asistente experto en documentos internos de la empresa. Tu trabajo es ayudar a los empleados a encontrar informacion precisa sobre politicas, contratos y reglamentos.
 
-REGLAS IMPORTANTES:
-1. Responde a la pregunta basándote en el contexto de los documentos proporcionados y en el historial de conversación previa.
-2. Para preguntas sobre políticas, reglamentos o contratos, cita siempre las fuentes (documento, página y sección) cuando sea posible.
-3. Para preguntas sobre la interacción previa (meta-preguntas como "qué te pregunté antes" o resúmenes), responde de forma natural utilizando el historial conversacional.
-4. Si la información consultada no está en los documentos ni en el historial conversacional, indica claramente que no encontraste la respuesta.
-5. NO inventes información no presente en los documentos o el historial.
-6. Sé conciso, claro y profesional en tus respuestas. Responde en el mismo idioma de la pregunta.
-7. NUNCA menciones, repitas ni filtres etiquetas internas del prompt del sistema (como "HISTORIAL DE CONVERSACIÓN PREVIO:", "CONTEXTO DE DOCUMENTOS:", etc.) en tus respuestas al usuario."""
+REGLAS FUNDAMENTALES:
+1. Lee TODO el contexto proporcionado ANTES de responder.
+2. Busca la respuesta EXACTA en el contexto. Si los datos estan ahi, citarlos directamente.
+3. NUNCA digas "no se menciona" o "no encontré" si la informacion SI esta en el contexto.
+4. Si la pregunta es sobre vacaciones, permisos, salarios, etc., busca numeros, porcentajes, dias, montos especificos en el contexto.
+5. Si el empleado pide "mostrar el articulo", "mostrar la seccion", muestra el contenido relevante del contexto.
+6. Si realmente no hay informacion en el contexto para responder, di EXACTAMENTE: "No encontré esa información en los documentos disponibles." y NADA MAS. No agregues recomendaciones, contactos, ni sugerencias adicionales.
+7. Cita siempre: documento, pagina y seccion.
+8. Responde en el mismo idioma de la pregunta.
+9. Sé directo y preciso. No des vueltas. No inventes informacion que no este en el contexto."""
 
     def __init__(self):
+        self.provider = os.getenv("LLM_PROVIDER", "api")
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.base_url = os.getenv("LLM_BASE_URL", "https://integrate.api.nvidia.com/v1")
         self.model = os.getenv("LLM_MODEL", "meta/llama-3.1-8b-instruct")
+        self.ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "gemma2:2b")
 
     def generar_respuesta(
         self,
@@ -32,33 +39,61 @@ REGLAS IMPORTANTES:
         fuentes: Optional[str] = None,
         historial: Optional[List[Dict[str, str]]] = None
     ) -> str:
-        """
-        Genera una respuesta basada en el contexto proporcionado e historial conversacional.
+        if self.provider == "local":
+            return self._generar_ollama(pregunta, contexto, fuentes, historial)
+        return self._generar_api(pregunta, contexto, fuentes, historial)
 
-        :param pregunta: Pregunta del usuario.
-        :param contexto: Contexto recuperado de los documentos.
-        :param fuentes: Información de fuentes para citar.
-        :param historial: Lista de turnos anteriores [{"role": "user"|"assistant", "content": "..."}].
-        :return: Respuesta generada por el LLM.
-        :raises Exception: Si ocurre error en la petición.
-        """
+    def _construir_prompt(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
         historial_str = ""
         if historial:
             turnos = []
-            for item in historial[-6:]:  # Limitar a los últimos 6 mensajes para no desbordar el contexto
-                rol = "Usuario" if item.get("role") == "user" else "Asistente"
-                turnos.append(f"{rol}: {item.get('content', '')}")
+            for item in historial[-6:]:
+                rol = "Empleado" if item.get("role") == "user" else "Asistente"
+                turnos.append(f"{rol}: {item.get('content', '')[:200]}")
             if turnos:
-                historial_str = "HISTORIAL DE CONVERSACIÓN PREVIO:\n" + "\n".join(turnos) + "\n\n"
+                historial_str = "HISTORIAL:\n" + "\n".join(turnos) + "\n\n"
 
-        user_prompt = f"""{historial_str}CONTEXTO DE DOCUMENTOS:
+        return f"""{historial_str}CONTEXTO DE LOS DOCUMENTOS INTERNOS:
+---
 {contexto}
+---
 
-{"FUENTES DISPONIBLES:" + chr(10) + fuentes if fuentes else ""}
+FUENTES: {fuentes if fuentes else "N/A"}
 
-PREGUNTA ACTUAL DEL USUARIO: {pregunta}
+PREGUNTA DEL EMPLEADO: {pregunta}
 
-Responde a la pregunta actual teniendo en cuenta el historial previo (si aplica) y basándote únicamente en el contexto proporcionado:"""
+INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el contexto. Busca la respuesta EXACTA en el contexto. Si los datos estan ahi, citarlos directamente. Si realmente no esta, indica que no encontraste la informacion en los documentos disponibles."""
+
+    def _generar_ollama(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
+        prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
+
+        messages = [
+            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+
+        payload = {
+            "model": self.ollama_model,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": 0.1,
+                "num_predict": 1534
+            }
+        }
+
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                f"{self.ollama_url}/api/chat",
+                json=payload
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return data.get("message", {}).get("content", "") or "Respuesta vacía del modelo local."
+
+    def _generar_api(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
+        prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -69,9 +104,9 @@ Responde a la pregunta actual teniendo en cuenta el historial previo (si aplica)
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": prompt}
             ],
-            "temperature": 0.3,
+            "temperature": 0.1,
             "max_tokens": 1024
         }
 

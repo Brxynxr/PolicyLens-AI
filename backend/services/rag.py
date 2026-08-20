@@ -15,7 +15,20 @@ STOPWORDS_ES = {
     'sin', 'sobre', 'también', 'me', 'hasta', 'hay', 'donde', 'quien', 'desde', 'todo',
     'nos', 'durante', 'todos', 'uno', 'les', 'ni', 'contra', 'otros', 'ese', 'eso',
     'ante', 'ellos', 'e', 'esto', 'mí', 'antes', 'algunos', 'qué', 'cuál', 'cuáles',
-    'cuántos', 'cuánto', 'cuánta', 'cuántas', 'tiene', 'tengo', 'es', 'son', 'días', 'cómo'
+    'cuántos', 'cuánto', 'cuánta', 'cuántas', 'tiene', 'tengo', 'es', 'son', 'días', 'cómo',
+    'si', 'con', 'años', 'y', 'que'
+}
+
+# Mapa de temas conocidos del dominio
+TEMAS_CONOCIDOS = {
+    "vacaciones": ["vacaciones", "vacacion", "descanso", "dias libres", "periodo vacacional"],
+    "teletrabajo": ["teletrabajo", "remoto", "home office", "trabajo desde casa"],
+    "contrato": ["contrato", "clausula", "vigencia", "terminacion", "obligaciones"],
+    "seguridad": ["seguridad", "password", "acceso", "datos", "incidente", "politica de seguridad"],
+    "sanciones": ["sancion", "amonestacion", "suspension", "despido", "penalidad"],
+    "permisos": ["permiso", "licencia", "incapacidad", "medico", "enfermedad"],
+    "renuncia": ["renuncia", "renunciar", "desvinculacion", "salida", "baja"],
+    "salario": ["salario", "sueldo", "bono", "compensacion", "pago"],
 }
 
 
@@ -64,6 +77,17 @@ class RAGService:
             name="documents",
             metadata={"hnsw:space": "cosine"}
         )
+
+    @staticmethod
+    def _detectar_temas(texto: str) -> set:
+        temas = set()
+        texto_lower = texto.lower()
+        for tema, keywords in TEMAS_CONOCIDOS.items():
+            for kw in keywords:
+                if kw in texto_lower:
+                    temas.add(tema)
+                    break
+        return temas
 
     def indexar_documento(self, chunks: List[Dict[str, Any]]) -> None:
         if not chunks:
@@ -195,9 +219,9 @@ class RAGService:
             db.commit()
             db.refresh(conversation)
 
-        # 2. Cargar historial previo de la conversación y obtener el último mensaje del usuario
+        # 2. Cargar historial previo de la conversación (solo preguntas del usuario)
         historial = []
-        ultimo_mensaje_usuario = ""
+        ultimas_preguntas_usuario = []
         if conversation.messages:
             for msg in conversation.messages:
                 historial.append({
@@ -205,9 +229,22 @@ class RAGService:
                     "content": msg.content
                 })
                 if msg.role == "user":
-                    ultimo_mensaje_usuario = msg.content
+                    ultimas_preguntas_usuario.append(msg.content)
 
-        # Detectar si la pregunta actual es una meta-pregunta conversacional o un seguimiento contextual
+        # 3. Detectar cambio de tema
+        temas_nuevos = self._detectar_temas(pregunta)
+        temas_previos = set()
+        if ultimas_preguntas_usuario:
+            for p in ultimas_preguntas_usuario[-3:]:
+                temas_previos |= self._detectar_temas(p)
+
+        es_cambio_tema = (
+            len(temas_nuevos) > 0
+            and len(temas_previos) > 0
+            and not temas_nuevos & temas_previos
+        )
+
+        # 4. Construir query de búsqueda
         pregunta_lower = pregunta.lower()
         es_meta_pregunta = any(kw in pregunta_lower for kw in [
             "primera pregunta", "primer tema", "qué te pregunté", "te pregunté", "te dije",
@@ -217,13 +254,22 @@ class RAGService:
 
         query_busqueda = pregunta
         es_pregunta_corta_o_seguimiento = (
-            len(pregunta.split()) < 12 or 
-            any(kw in pregunta_lower for kw in ["y si", "y para", "y en", "cuántos", "cuál", "cuáles", "esto", "eso", "llevo", "años", "sobre", "anterior", "mismo", "mismas"])
+            len(pregunta.split()) < 12 or
+            any(kw in pregunta_lower for kw in ["y si", "y para", "y en", "cuántos", "cuál", "cuáles", "esto", "eso", "llevo", "sobre", "anterior", "mismo", "mismas", "muéstrame", "muestra", "artículo", "sección", "página"])
         )
-        if historial and ultimo_mensaje_usuario and es_pregunta_corta_o_seguimiento and not es_meta_pregunta:
-            query_busqueda = f"{ultimo_mensaje_usuario} {pregunta}"
 
-        # 3. Buscar fragmentos relevantes en la base vectorial con la consulta expandida
+        # Solo agregar contexto previo si NO es cambio de tema
+        if (
+            historial
+            and ultimas_preguntas_usuario
+            and es_pregunta_corta_o_seguimiento
+            and not es_meta_pregunta
+            and not es_cambio_tema
+        ):
+            ultimo_contexto = ultimas_preguntas_usuario[-1]
+            query_busqueda = f"{ultimo_contexto} {pregunta}"
+
+        # 5. Buscar fragmentos relevantes
         fragmentos = self.buscar_fragmentos(query_busqueda, top_k=12, local=True)
 
         # 4. Calcular scores combinados (semántico + léxico)
@@ -248,7 +294,7 @@ class RAGService:
             if not fragmentos_relevantes_raw:
                 fragmentos_relevantes_raw = [fragmentos[0]]
 
-            # Deduplicar por documento, quedarse con el chunk de mayor score
+            # Deduplicar por documento, quedarse con el chunk de mayor score, máximo 2
             seen_docs = set()
             fragmentos_relevantes = []
             for f in fragmentos_relevantes_raw:
@@ -256,6 +302,7 @@ class RAGService:
                 if doc_name not in seen_docs:
                     seen_docs.add(doc_name)
                     fragmentos_relevantes.append(f)
+            fragmentos_relevantes = fragmentos_relevantes[:2]  # Máximo 2 chunks al LLM
         else:
             fragmentos_relevantes = []
 
@@ -296,11 +343,17 @@ class RAGService:
                 fuentes = []
             else:
                 try:
+                    # Solo enviar historial si es meta-pregunta o tema nuevo
+                    # Para seguimientos del mismo tema, NO enviar historial (evita confusión)
+                    if es_meta_pregunta or es_cambio_tema:
+                        historial_para_llm = [{"role": "user", "content": h["content"]} for h in historial if h["role"] == "user"][-4:]
+                    else:
+                        historial_para_llm = []
                     respuesta = self.llm_service.generar_respuesta(
                         pregunta=pregunta,
                         contexto=contexto if tiene_fragmentos_relevantes else "",
                         fuentes=fuentes_str if tiene_fragmentos_relevantes else None,
-                        historial=historial
+                        historial=historial_para_llm
                     )
                     if not respuesta or not respuesta.strip():
                         respuesta = "No fue posible generar una respuesta a partir del contexto."
