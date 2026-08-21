@@ -171,7 +171,7 @@ def procesar_documento(
         if not texto_pagina:
             continue
 
-        raw_chunks = dividir_texto(texto_pagina, tamano_chunk=500, overlap=50)
+        raw_chunks = dividir_texto(texto_pagina, tamano_chunk=1500, overlap=200)
         chunks_con_meta = crear_chunks_con_metadata(
             document_id=doc_orm.id,
             document_name=doc_orm.name,

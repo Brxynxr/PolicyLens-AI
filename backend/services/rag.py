@@ -1,5 +1,6 @@
 import os
 import re
+import unicodedata
 from typing import List, Dict, Any, Optional
 import chromadb
 from sqlalchemy.orm import Session
@@ -8,15 +9,40 @@ from backend.services.embeddings import EmbeddingService
 from backend.services.llm import LLMService
 from backend.models.conversation import Conversation, Message
 
+try:
+    from rank_bm25 import BM25Okapi
+    BM25_DISPONIBLE = True
+except ImportError:
+    BM25_DISPONIBLE = False
+
+
+def _sin_tildes(texto: str) -> str:
+    """
+    Elimina diacriticos: 'año'->'ano', 'días'->'dias', 'política'->'politica'.
+    Permite que consultas escritas sin enie ni tildes coincidan con el texto
+    de los documentos al tokenizar (matching lexico insensible a acentos).
+    """
+    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+
+
+def _tokenizar(texto: str) -> List[str]:
+    """Tokeniza en minusculas y sin diacriticos para scoring lexico (BM25)."""
+    return re.findall(r'\b\w+\b', _sin_tildes(texto.lower()))
+
+
+# Stopwords en espanol: conectores y palabras gramaticales sin valor semantico.
+# Se excluyen terminos de dominio RRHH ('dias', 'anos') por ser relevantes en consultas.
+# Normalizadas sin tildes para comparar contra tokens ya normalizados.
 STOPWORDS_ES = {
     'de', 'la', 'que', 'el', 'en', 'y', 'a', 'los', 'del', 'se', 'las', 'por', 'un',
-    'para', 'con', 'no', 'una', 'su', 'al', 'lo', 'como', 'más', 'pero', 'sus', 'le',
-    'ya', 'o', 'este', 'sí', 'porque', 'esta', 'son', 'entre', 'está', 'cuando', 'muy',
-    'sin', 'sobre', 'también', 'me', 'hasta', 'hay', 'donde', 'quien', 'desde', 'todo',
+    'para', 'con', 'no', 'una', 'su', 'al', 'lo', 'como', 'mas', 'pero', 'sus', 'le',
+    'ya', 'o', 'este', 'si', 'porque', 'esta', 'son', 'entre', 'esta', 'cuando', 'muy',
+    'sin', 'sobre', 'tambien', 'me', 'hasta', 'hay', 'donde', 'quien', 'desde', 'todo',
     'nos', 'durante', 'todos', 'uno', 'les', 'ni', 'contra', 'otros', 'ese', 'eso',
-    'ante', 'ellos', 'e', 'esto', 'mí', 'antes', 'algunos', 'qué', 'cuál', 'cuáles',
-    'cuántos', 'cuánto', 'cuánta', 'cuántas', 'tiene', 'tengo', 'es', 'son', 'días', 'cómo',
-    'si', 'con', 'años', 'y', 'que'
+    'ante', 'ellos', 'e', 'esto', 'mi', 'antes', 'algunos', 'que', 'cual', 'cuales',
+    'cuantos', 'cuanto', 'cuanta', 'cuantas', 'tiene', 'tengo', 'es', 'como',
+    'si', 'mi', 'tu', 'usted', 'yo', 'ella', 'ellos', 'ellas', 'nosotros', 'ustedes',
+    'the', 'of', 'and', 'to', 'in', 'is'
 }
 
 # Mapa de temas conocidos del dominio
@@ -175,26 +201,51 @@ class RAGService:
 
     def _extraer_pasaje_clave(self, pregunta: str, contenido: str) -> str:
         contenido = self._limpiar_texto(contenido)
+
+        # Texto corto: devolver completo sin fragmentar
+        if len(contenido) < 600:
+            return contenido
+
+        # Division por parrafos; si no hay saltos dobles, reintentar con saltos sencillos
         bloques = [b.strip() for b in contenido.split('\n\n') if b.strip()]
+        if len(bloques) <= 1:
+            bloques = [b.strip() for b in contenido.split('\n') if b.strip()]
         if not bloques:
             return contenido
 
-        palabras = set(re.findall(r'\b\w+\b', pregunta.lower())) - STOPWORDS_ES
-        if not palabras:
-            return '\n\n'.join(bloques[:2])
+        palabras = set(_tokenizar(pregunta)) - STOPWORDS_ES
 
         bloques_puntuados = []
         for b in bloques:
-            b_lower = b.lower()
-            coincidencias = sum(1 for p in palabras if p in b_lower)
+            # Encabezados Markdown o lineas cortas (< 80 chars): score 0,
+            # nunca se seleccionan de forma aislada como pasaje principal
+            if b.startswith('#') or len(b) < 80 or not palabras:
+                bloques_puntuados.append((0.0, b))
+                continue
+
+            b_tokens = set(_tokenizar(b))
+            coincidencias = sum(1 for p in palabras if p in b_tokens)
             score = coincidencias / max(1, len(palabras))
-            if any(h in b_lower for h in ['sección', 'cláusula', 'artículo', 'política', 'derecho', 'vigencia', 'vacaciones', 'teletrabajo']):
+            # Bonus por terminos de dominio, solo en parrafos narrativos
+            if any(h in b_tokens for h in ['seccion', 'clausula', 'articulo', 'politica', 'derecho', 'vigencia', 'vacaciones', 'teletrabajo']):
                 score += 0.25
             bloques_puntuados.append((score, b))
 
         bloques_puntuados.sort(key=lambda x: x[0], reverse=True)
         mejores = [b for s, b in bloques_puntuados if s > 0.15][:2]
-        return '\n\n'.join(mejores) if mejores else '\n\n'.join(bloques[:2])
+
+        if mejores:
+            pasaje = '\n\n'.join(mejores)
+        else:
+            # Sin narrativa puntuada: preferir los primeros bloques NO encabezado
+            narrativos = [b for b in bloques if not (b.startswith('#') or len(b) < 80)]
+            pasaje = '\n\n'.join((narrativos or bloques)[:2])
+
+        # Fallback final: pasaje demasiado corto -> devolver el chunk completo
+        if len(pasaje.strip()) < 100:
+            return contenido
+
+        return pasaje
 
     def preguntar(
         self,
@@ -272,14 +323,31 @@ class RAGService:
         # 5. Buscar fragmentos relevantes
         fragmentos = self.buscar_fragmentos(query_busqueda, top_k=12, local=True)
 
-        # 4. Calcular scores combinados (semántico + léxico)
-        palabras_pregunta = set(re.findall(r'\b\w+\b', pregunta.lower())) - STOPWORDS_ES
-        for frag in fragmentos:
+        # 4. Calcular scores combinados (semántico + BM25 léxico)
+        # Términos de consulta sin stopwords ni tildes: preguntas largas en lenguaje
+        # natural no penalizan el score léxico y 'año'/'ano' o 'días'/'dias' equivalen.
+        terminos_query = [
+            w for w in _tokenizar(pregunta)
+            if w not in STOPWORDS_ES and len(w) > 2
+        ]
+
+        bm25_scores: List[float] = [0.0] * len(fragmentos)
+        if BM25_DISPONIBLE and terminos_query and fragmentos:
+            corpus = [_tokenizar(frag["content"]) for frag in fragmentos]
+            bm25 = BM25Okapi(corpus)
+            # get_scores retorna un ndarray: convertir a lista para evitar ambiguedad booleana
+            scores_raw = [float(s) for s in bm25.get_scores(terminos_query)]
+            max_bm25 = max(scores_raw) if scores_raw else 0.0
+            if max_bm25 > 0:
+                # Normalización relativa a 0-100: ranking entre los fragments recuperados
+                bm25_scores = [(s / max_bm25) * 100.0 for s in scores_raw]
+
+        for i, frag in enumerate(fragmentos):
             cos_sim = round((1 - frag["distance"]) * 100, 1)
-            texto_lower = frag["content"].lower()
-            lex_score = sum(1 for p in palabras_pregunta if p in texto_lower) / max(1, len(palabras_pregunta))
-            frag["hybrid_score"] = (cos_sim * 0.7) + (lex_score * 30.0)
+            bm25_norm = round(bm25_scores[i], 1)
             frag["cos_score"] = cos_sim
+            frag["bm25_score"] = bm25_norm
+            frag["hybrid_score"] = (cos_sim * 0.7) + (bm25_norm * 0.3)
 
         # Ordenar por score híbrido
         fragmentos.sort(key=lambda x: x.get("hybrid_score", 0), reverse=True)
@@ -392,10 +460,9 @@ class RAGService:
             )
 
         lineas = [
-            f"📋 **Información recuperada en la documentación interna:**\n"
+            "INFORMACIÓN RECUPERADA EN LA DOCUMENTACIÓN INTERNA:\n"
         ]
 
-        # Tomar los 2 fragmentos más relevantes
         for frag in fragmentos[:2]:
             meta = frag.get("metadata", {})
             doc = meta.get("document_name", "Documento interno")
@@ -404,12 +471,15 @@ class RAGService:
 
             ubicacion = f"Pág. {pag}" if pag else ""
             if sec and sec != f"Página {pag}" and sec != "General":
-                ubicacion += f" • {sec}"
+                ubicacion += f" • {sec}" if ubicacion else sec
 
+            # Extraer pasaje con fallback seguro
             pasaje = self._extraer_pasaje_clave(pregunta, frag["content"])
+            if not pasaje or len(pasaje.strip()) < 20:
+                pasaje = frag["content"].strip()
 
-            lineas.append(f"📌 **{doc}** ({ubicacion}):")
-            lineas.append(f"{pasaje}\n")
+            lineas.append(f"**{doc}** ({ubicacion}):")
+            lineas.append(f"> \"{pasaje}\"\n")
 
-        lineas.append("🔍 *Respuesta extraída directamente mediante búsqueda semántica local (sin LLM).*")
+        lineas.append("*Respuesta extraída directamente mediante búsqueda semántica local (sin LLM).*")
         return "\n".join(lineas)
