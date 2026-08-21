@@ -193,3 +193,24 @@ body {
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* Micro-interactions: subtle scale 1.02 on hover, 0.97 on active press */
+button:not(:disabled):active, [role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
+/* Smooth Focus Ring Transition */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  transition: outline-color 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms ease-out;
+}
+
+/* Respect OS Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

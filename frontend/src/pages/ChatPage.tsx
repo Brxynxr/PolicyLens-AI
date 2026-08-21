@@ -201,29 +201,39 @@ export default function ChatPage() {
         <div className="max-w-3xl mx-auto space-y-2">
           {/* Mode Switcher Pill Selector (Above input bar) */}
           <div className="flex items-center justify-between px-2">
-            <div className="inline-flex p-0.5 rounded-xl bg-[#F5F0E8] border border-[#E8E2D6]">
+            <div className="inline-flex p-0.5 rounded-xl bg-[#F5F0E8] border border-[#E8E2D6] relative">
               <button
                 type="button"
                 onClick={() => setMode('rag')}
                 className={`
-                  px-2.5 py-1 rounded-lg text-3xs font-extrabold transition-all cursor-pointer
-                  ${mode === 'rag' 
-                    ? 'bg-white text-[#9E7111] shadow-2xs border border-[#E8E2D6]' 
-                    : 'text-neutral-600 hover:text-neutral-900'}
+                  relative z-10 px-2.5 py-1 rounded-lg text-3xs font-extrabold transition-colors duration-150 cursor-pointer
+                  ${mode === 'rag' ? 'text-[#9E7111]' : 'text-neutral-600 hover:text-neutral-900'}
                 `}
               >
+                {mode === 'rag' && (
+                  <motion.div
+                    layoutId="mode-pill-indicator"
+                    className="absolute inset-0 bg-white rounded-lg shadow-2xs border border-[#E8E2D6] -z-10"
+                    transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                  />
+                )}
                 RAG + LLM
               </button>
               <button
                 type="button"
                 onClick={() => setMode('search')}
                 className={`
-                  px-2.5 py-1 rounded-lg text-3xs font-extrabold transition-all cursor-pointer
-                  ${mode === 'search' 
-                    ? 'bg-white text-[#9E7111] shadow-2xs border border-[#E8E2D6]' 
-                    : 'text-neutral-600 hover:text-neutral-900'}
+                  relative z-10 px-2.5 py-1 rounded-lg text-3xs font-extrabold transition-colors duration-150 cursor-pointer
+                  ${mode === 'search' ? 'text-[#9E7111]' : 'text-neutral-600 hover:text-neutral-900'}
                 `}
               >
+                {mode === 'search' && (
+                  <motion.div
+                    layoutId="mode-pill-indicator"
+                    className="absolute inset-0 bg-white rounded-lg shadow-2xs border border-[#E8E2D6] -z-10"
+                    transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                  />
+                )}
                 Solo Embeddings
               </button>
             </div>
