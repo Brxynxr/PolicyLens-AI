@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
 
@@ -145,91 +146,112 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       {/* Toast Notification Container (Top-Right) */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none p-2 select-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`
-              pointer-events-auto flex items-start gap-3 p-4 rounded-2xl bg-white border border-l-4 shadow-lg shadow-brand-200/50 transition-all duration-300 animate-fade-in-right
-              ${getToastBorder(toast.type)}
-            `}
-          >
-            <div className="shrink-0 mt-0.5">
-              {getToastIcon(toast.type)}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {toast.title && (
-                <h4 className="text-xs font-bold text-neutral-900 leading-tight mb-0.5">
-                  {toast.title}
-                </h4>
-              )}
-              <p className="text-xs text-neutral-700 leading-relaxed font-medium">
-                {toast.message}
-              </p>
-            </div>
-
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="shrink-0 p-1 text-neutral-400 hover:text-neutral-700 rounded-lg hover:bg-[#FAF8F5] transition-colors cursor-pointer"
-              aria-label="Cerrar notificación"
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 40, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 40, scale: 0.95 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              layout
+              className={`
+                pointer-events-auto flex items-start gap-3 p-4 rounded-2xl bg-white border border-l-4 shadow-lg shadow-brand-200/50
+                ${getToastBorder(toast.type)}
+              `}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        ))}
+              <div className="shrink-0 mt-0.5">
+                {getToastIcon(toast.type)}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                {toast.title && (
+                  <h4 className="text-xs font-bold text-neutral-900 leading-tight mb-0.5">
+                    {toast.title}
+                  </h4>
+                )}
+                <p className="text-xs text-neutral-700 leading-relaxed font-medium">
+                  {toast.message}
+                </p>
+              </div>
+
+              <button
+                onClick={() => removeToast(toast.id)}
+                className="shrink-0 p-1 text-neutral-400 hover:text-neutral-700 rounded-lg hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                aria-label="Cerrar notificación"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {/* Confirmation Modal */}
-      {confirmState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-[#E8E2D6] shadow-2xl p-6 sm:p-7 max-w-md w-full animate-scale-up space-y-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${confirmState.options.isDestructive ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-[#FAF8F5] text-[#9E7111] border border-[#E8E2D6]'}`}>
-                {confirmState.options.isDestructive ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
+      <AnimatePresence>
+        {confirmState && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-xs"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="bg-white rounded-3xl border border-[#E8E2D6] shadow-2xl p-6 sm:p-7 max-w-md w-full space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${confirmState.options.isDestructive ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-[#FAF8F5] text-[#9E7111] border border-[#E8E2D6]'}`}>
+                  {confirmState.options.isDestructive ? (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                </div>
+                <h3 className="font-extrabold text-base text-neutral-900 leading-tight">
+                  {confirmState.options.title || 'Confirmación requerida'}
+                </h3>
               </div>
-              <h3 className="font-extrabold text-base text-neutral-900 leading-tight">
-                {confirmState.options.title || 'Confirmación requerida'}
-              </h3>
-            </div>
 
-            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-medium">
-              {confirmState.options.message}
-            </p>
+              <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-medium">
+                {confirmState.options.message}
+              </p>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8E2D6]">
-              <button
-                type="button"
-                onClick={() => confirmState.resolve(false)}
-                className="px-4 py-2.5 rounded-xl border border-[#E8E2D6] bg-white hover:bg-[#FAF8F5] text-neutral-700 font-bold text-xs transition-all cursor-pointer"
-              >
-                {confirmState.options.cancelText || 'Cancelar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => confirmState.resolve(true)}
-                className={`
-                  px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition-all cursor-pointer
-                  ${confirmState.options.isDestructive 
-                    ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' 
-                    : 'bg-[#9E7111] hover:bg-[#7a5807] shadow-gold-500/20'}
-                `}
-              >
-                {confirmState.options.confirmText || 'Confirmar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8E2D6]">
+                <button
+                  type="button"
+                  onClick={() => confirmState.resolve(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#E8E2D6] bg-white hover:bg-[#FAF8F5] text-neutral-700 font-bold text-xs transition-all cursor-pointer"
+                >
+                  {confirmState.options.cancelText || 'Cancelar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmState.resolve(true)}
+                  className={`
+                    px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition-all cursor-pointer
+                    ${confirmState.options.isDestructive 
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' 
+                      : 'bg-[#9E7111] hover:bg-[#7a5807] shadow-gold-500/20'}
+                  `}
+                >
+                  {confirmState.options.confirmText || 'Confirmar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </ToastContext.Provider>
   )
 }
