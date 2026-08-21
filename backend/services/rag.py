@@ -57,6 +57,56 @@ TEMAS_CONOCIDOS = {
     "salario": ["salario", "sueldo", "bono", "compensacion", "pago"],
 }
 
+# --- Parametros de puntuacion y filtrado RAG ---
+PESO_COSENO = 0.85              # Peso semantico dentro del score hibrido
+PESO_BM25 = 0.15                # Peso lexico dentro del score hibrido
+UMBRAL_COS_RELEVANTE = 26.0     # Coseno minimo para considerar relevante un fragmento
+UMBRAL_HIBRIDO_RELEVANTE = 28.0  # Score hibrido minimo para considerar relevante un fragmento
+UMBRAL_COS_FALLBACK = 22.0      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
+METADATA_BOOST = 15.0           # Bonus por coincidencia pregunta <-> nombre de archivo
+
+# Sinonimos de dominio: termino de la pregunta -> tokens esperables en el nombre
+# del documento. Permite que 'incapacidad' o 'bono' apunten a los archivos
+# politica_permisos_licencias / politica_salario_beneficios aunque el nombre del
+# archivo no contenga literalmente esas palabras.
+SINONIMOS_NOMBRE_DOC = {
+    "salario": {"salario"},
+    "salarios": {"salario"},
+    "sueldo": {"salario"},
+    "sueldos": {"salario"},
+    "nomina": {"salario"},
+    "remuneracion": {"salario"},
+    "remunerado": {"salario"},
+    "bono": {"salario"},
+    "bonos": {"salario"},
+    "prima": {"salario"},
+    "aumento": {"salario"},
+    "aumentos": {"salario"},
+    "beneficio": {"salario", "beneficios"},
+    "beneficios": {"salario", "beneficios"},
+    "permiso": {"permisos", "licencias"},
+    "permisos": {"permisos", "licencias"},
+    "licencia": {"permisos", "licencias"},
+    "licencias": {"permisos", "licencias"},
+    "incapacidad": {"permisos", "licencias"},
+    "incapacidades": {"permisos", "licencias"},
+    "enfermedad": {"permisos", "licencias"},
+    "luto": {"permisos", "licencias"},
+    "matrimonio": {"permisos", "licencias"},
+    "paternidad": {"permisos", "licencias"},
+    "confidencial": {"contrato", "confidencialidad"},
+    "confidencialidad": {"contrato", "confidencialidad"},
+    "seguridad": {"seguridad"},
+    "incidente": {"seguridad"},
+    "viaje": {"gastos", "viaje"},
+    "viajes": {"gastos", "viaje"},
+    "viaticos": {"gastos", "viaje"},
+    "gastos": {"gastos", "viaje"},
+    "conducta": {"conducta"},
+    "reglamento": {"reglamento", "interno"},
+    "rrhh": {"manual", "rrhh"},
+}
+
 
 class RAGService:
     """
@@ -114,6 +164,24 @@ class RAGService:
                     temas.add(tema)
                     break
         return temas
+
+    @staticmethod
+    def _boost_metadata(terminos_pregunta: List[str], document_name: str) -> float:
+        """
+        Bonus METADATA_BOOST si algun termino relevante de la pregunta (o su
+        sinonimo de dominio) coincide directamente con el nombre del documento.
+        Ej.: pregunta con 'salario'/'bono' -> documento 'politica_salario_beneficios'.
+        """
+        if not terminos_pregunta or not document_name:
+            return 0.0
+
+        nombre_tokens = set(_tokenizar(document_name))
+        objetivos: set = set()
+        for termino in terminos_pregunta:
+            objetivos.add(termino)
+            objetivos |= SINONIMOS_NOMBRE_DOC.get(termino, set())
+
+        return METADATA_BOOST if objetivos & nombre_tokens else 0.0
 
     def indexar_documento(self, chunks: List[Dict[str, Any]]) -> None:
         if not chunks:
@@ -345,22 +413,35 @@ class RAGService:
         for i, frag in enumerate(fragmentos):
             cos_sim = round((1 - frag["distance"]) * 100, 1)
             bm25_norm = round(bm25_scores[i], 1)
+            boost_doc = self._boost_metadata(
+                terminos_query,
+                frag["metadata"].get("document_name", "")
+            )
             frag["cos_score"] = cos_sim
             frag["bm25_score"] = bm25_norm
-            frag["hybrid_score"] = (cos_sim * 0.7) + (bm25_norm * 0.3)
+            frag["metadata_boost"] = boost_doc
+            # Rebalanceo semantico (0.85/0.15): evita que documentos genericos que
+            # repiten terminos comunes tapen a los documentos especificos de politicas
+            frag["hybrid_score"] = round((cos_sim * PESO_COSENO) + (bm25_norm * PESO_BM25) + boost_doc, 1)
 
         # Ordenar por score híbrido
         fragmentos.sort(key=lambda x: x.get("hybrid_score", 0), reverse=True)
 
-        # Filtrar fuentes verdaderamente relevantes para la respuesta
+        # Filtrar fuentes relevantes con umbrales suavizados (evita falsos negativos)
         if fragmentos:
-            top_score = fragmentos[0].get("hybrid_score", 0)
             fragmentos_relevantes_raw = [
                 f for f in fragmentos
-                if f.get("hybrid_score", 0) >= max(38.0, top_score - 14.0) and f.get("cos_score", 0) >= 38.0
+                if f.get("cos_score", 0) >= UMBRAL_COS_RELEVANTE
+                and f.get("hybrid_score", 0) >= UMBRAL_HIBRIDO_RELEVANTE
             ]
+
+            # Fallback a Top-1: si ningun fragmento supero los umbrales pero la
+            # busqueda vectorial devolvio resultados, entregar siempre el mejor
+            # disponible siempre que su senal semantica sea minimamente aceptable.
             if not fragmentos_relevantes_raw:
-                fragmentos_relevantes_raw = [fragmentos[0]]
+                mejor = fragmentos[0]
+                if mejor.get("cos_score", 0) >= UMBRAL_COS_FALLBACK:
+                    fragmentos_relevantes_raw = [mejor]
 
             # Deduplicar por documento, quedarse con el chunk de mayor score, máximo 2
             seen_docs = set()
@@ -373,6 +454,8 @@ class RAGService:
             fragmentos_relevantes = fragmentos_relevantes[:2]  # Máximo 2 chunks al LLM
         else:
             fragmentos_relevantes = []
+
+        tiene_fragmentos_relevantes = bool(fragmentos_relevantes)
 
         fuentes = []
         contexto_parts = []
@@ -391,11 +474,6 @@ class RAGService:
         fuentes_str = "\n".join([f"- {f['document']}, p.{f['page']}" for f in fuentes])
 
         # 5. Generar respuesta según el modo seleccionado (RAG o Search)
-        tiene_fragmentos_relevantes = bool(
-            fragmentos and 
-            (fragmentos[0].get("cos_score", 0) >= 35.0 or fragmentos[0].get("hybrid_score", 0) >= 36.0)
-        )
-
         if mode == "search":
             if not tiene_fragmentos_relevantes:
                 respuesta = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
@@ -453,7 +531,7 @@ class RAGService:
             return f"No se encontró información relevante en los documentos para responder a: \"{pregunta}\"."
 
         top = fragmentos[0]
-        if top.get("cos_score", 0) < 35.0 and top.get("hybrid_score", 0) < 36.0:
+        if top.get("cos_score", 0) < UMBRAL_COS_RELEVANTE and top.get("hybrid_score", 0) < UMBRAL_HIBRIDO_RELEVANTE:
             return (
                 f"No se encontró una coincidencia concluyente en las políticas y contratos indexados para: \"{pregunta}\".\n\n"
                 f"Te sugerimos reformular los términos de búsqueda o consultar directamente con el área de Recursos Humanos."

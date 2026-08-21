@@ -21,7 +21,7 @@ PolicyLens-AI/
 │   │   └── chat.py              # POST /chat, gestión de conversaciones
 │   ├── services/
 │   │   ├── rag.py               # Orquestador RAG: búsqueda híbrida, scoring, prompt, respuesta ⭐
-│   │   ├── llm.py               # LLMService: modo "api" (NVIDIA NIM) o "local" (Ollama)
+│   │   ├── llm.py               # LLMService: API compatible OpenAI (NVIDIA NIM)
 │   │   ├── embeddings.py        # EmbeddingService: local (sentence-transformers) o API NVIDIA
 │   │   ├── documents.py         # procesar_documento(): extracción → hash → chunking → SQLite
 │   │   └── auth.py              # authenticate_user (comparación texto plano)
@@ -37,7 +37,7 @@ PolicyLens-AI/
 ├── chroma_data/                 # Persistencia de ChromaDB
 ├── sql_app.db                   # Base de datos SQLite
 ├── requirements.txt             # Dependencias Python
-└── .env                         # Configuración (LLM_PROVIDER, OLLAMA_MODEL, etc.)
+└── .env                         # Configuración (LLM_API_KEY, LLM_MODEL, etc.)
 ```
 
 ---
@@ -77,7 +77,7 @@ PolicyLens-AI/
 - **`"rag"`** (default): búsqueda semántica + **LLM generativo**.
 - **`"search"`**: sin LLM — extracción directa de pasajes clave con re-ranking léxico local (`_formatear_respuesta_solo_embeddings`).
 
-**LLM actual:** **Ollama local con `qwen2.5:3b`** (`LLM_PROVIDER=local` en `.env`). Alternativa por API: NVIDIA NIM `meta/llama-3.1-8b-instruct` (compatible OpenAI). Selección en runtime según `LLM_PROVIDER` (`llm.py:28,42`).
+**LLM actual:** NVIDIA NIM `meta/llama-3.1-8b-instruct` vía API (compatible OpenAI), configurado en `.env` (`llm.py`).
 
 **Lógica de búsqueda (híbrida):**
 
@@ -95,7 +95,7 @@ PolicyLens-AI/
 - **Backend:** API REST con **FastAPI** + Uvicorn (`http://localhost:8000`), docs automáticos en `/docs`.
 - **Frontend:** **React 19 + Vite + TypeScript + Tailwind CSS 4** (no es Streamlit ni Gradio). Páginas: Login, Chat, Documents (upload), Sync, Users. El proxy de Vite redirige `/api/*` → `http://localhost:8000` (`vite.config.ts:12-18`).
 - **Auth:** login simple sin tokens; el frontend guarda `user_id`/`role` en `localStorage`.
-- **Despliegue:** 100% local — SQLite + ChromaDB embebidos, Ollama local. Sin Docker.
+- **Despliegue:** SQLite + ChromaDB embebidos, LLM vía API NVIDIA NIM. Sin Docker.
 
 ---
 
@@ -171,7 +171,7 @@ def preguntar(self, pregunta, db, conversation_id=None, mode="rag"):
         # Extracción directa sin LLM
         respuesta = self._formatear_respuesta_solo_embeddings(pregunta, fragmentos_relevantes)
     else:
-        # Modo RAG: generar respuesta con LLM (qwen2.5:3b vía Ollama)
+        # Modo RAG: generar respuesta con LLM (NVIDIA NIM vía API)
         respuesta = self.llm_service.generar_respuesta(
             pregunta=pregunta,
             contexto=contexto if tiene_fragmentos_relevantes else "",

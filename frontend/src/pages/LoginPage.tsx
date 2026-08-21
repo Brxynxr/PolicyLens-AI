@@ -40,9 +40,9 @@ export default function LoginPage() {
         {/* Brand Header */}
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-gold-500 flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-md shadow-gold-500/20">
-            PL
+            RP
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">PolicyLens</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">RiwiPolicylens</h1>
           <p className="text-xs font-semibold uppercase tracking-wider text-gold-600 mt-1">AI Platform</p>
         </div>
 

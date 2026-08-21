@@ -51,7 +51,7 @@ export default function ChatMessage({ message, sources }: ChatMessageProps) {
       <div className="flex-1 space-y-3.5 min-w-0">
         <div className="flex items-center justify-between">
           <span className="font-bold text-sm text-neutral-900">
-            {isUser ? 'Tú (Colaborador)' : 'PolicyLens AI'}
+            {isUser ? 'Tú (Colaborador)' : 'RiwiPolicylens'}
           </span>
           <span className="text-2xs text-neutral-400 font-medium">
             {formatTime(message.created_at)}

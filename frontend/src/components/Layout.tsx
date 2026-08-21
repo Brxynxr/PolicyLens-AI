@@ -34,9 +34,9 @@ export default function Layout() {
         <header className="flex items-center justify-between px-6 py-4 border-b border-brand-200 bg-brand-100 md:hidden">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gold-500 flex items-center justify-center text-white font-bold">
-              PL
+              RP
             </div>
-            <span className="font-bold text-lg text-neutral-900 tracking-tight">PolicyLens</span>
+            <span className="font-bold text-lg text-neutral-900 tracking-tight">RiwiPolicylens</span>
           </div>
           <button 
             onClick={toggleSidebar}

@@ -65,10 +65,10 @@ export default function Sidebar({ onClose }: SidebarProps) {
       <div className="p-6 border-b border-brand-200 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gold-500 flex items-center justify-center text-white font-bold shadow-md shadow-gold-500/20">
-            PL
+            RP
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-tight tracking-tight text-neutral-900">PolicyLens</h1>
+            <h1 className="font-bold text-lg leading-tight tracking-tight text-neutral-900">RiwiPolicylens</h1>
             <span className="text-xs font-semibold uppercase tracking-wider text-gold-600">AI Platform</span>
           </div>
         </div>

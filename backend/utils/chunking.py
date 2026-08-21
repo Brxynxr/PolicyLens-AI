@@ -1,15 +1,14 @@
 import re
 from typing import List, Dict, Any, Optional
 
-
-# Oraciones terminan en . ! ? : ; seguidas de espacio o fin de texto
-_RE_ORACION = re.compile(r'[^.!?;:]+[.!?;:]+')
+# Oraciones terminan estrictamente en . ! ? seguidas de espacio o fin de texto (se excluyen dos puntos)
+_RE_ORACION = re.compile(r'[^.!?]+[.!?]+')
 
 
 def _dividir_por_oraciones(parrafo: str, tamano_chunk: int) -> List[str]:
     """
-    Divide un parrafo largo en oraciones. Si una oracion individual excede
-    tamano_chunk, se corta por espacios (nunca a mitad de palabra).
+    Divide un párrafo largo en oraciones respetando puntos y signos de interrogación/exclamación.
+    Si una oración excede tamano_chunk, se realiza corte por espacios.
     """
     partes = [m.group(0).strip() for m in _RE_ORACION.finditer(parrafo)]
     resto = _RE_ORACION.sub('', parrafo).strip()
@@ -24,7 +23,7 @@ def _dividir_por_oraciones(parrafo: str, tamano_chunk: int) -> List[str]:
             unidades.append(parte)
             continue
 
-        # Ultimo recurso: oracion gigante sin puntuacion -> corte por espacios
+        # Corte de emergencia por palabra si la oración supera el límite
         inicio = 0
         longitud = len(parte)
         while inicio < longitud:
@@ -40,22 +39,13 @@ def _dividir_por_oraciones(parrafo: str, tamano_chunk: int) -> List[str]:
     return unidades
 
 
-def dividir_texto(texto: str, tamano_chunk: int = 1500, overlap: int = 200) -> List[str]:
+def dividir_texto(texto: str, tamano_chunk: int = 1800, overlap: int = 360) -> List[str]:
     """
-    Chunking semantico/recursivo:
+    Chunking Semántico / Header-Aware:
 
-    1. Divide el texto en parrafos por saltos de linea doble ('\\n\\n').
-    2. Los parrafos que exceden tamano_chunk se subdividen por oraciones.
-    3. Las oraciones gigantes sin puntuacion se cortan por espacios.
-    4. Fusiona unidades respetando tamano_chunk y agrega solapamiento (overlap)
-       arrastrando las ultimas unidades completas del chunk anterior, de modo
-       que las oraciones/condiciones nunca quedan cortadas a la mitad.
-
-    :param texto: Texto de entrada.
-    :param tamano_chunk: Tamano maximo de caracteres por chunk (~512 tokens).
-    :param overlap: Caracteres maximos de solapamiento entre chunks consecutivos
-                    (10-15% de tamano_chunk recomendado).
-    :return: Lista de cadenas de texto (chunks).
+    1. Preserva bloques por saltos de línea doble ('\\n\\n').
+    2. Modifica el solapamiento para asegurar continuidad en reglas de negocio y títulos.
+    3. Ajustados valores por defecto: tamano_chunk=1800 (~500 tokens), overlap=360 (20%).
     """
     if not texto or not texto.strip():
         return []
@@ -67,7 +57,7 @@ def dividir_texto(texto: str, tamano_chunk: int = 1500, overlap: int = 200) -> L
     if overlap >= tamano_chunk:
         overlap = max(0, tamano_chunk // 3)
 
-    # 1-3. Construir unidades atomicas (parrafos u oraciones completas)
+    # 1. Fragmentación inicial por párrafos o títulos con salto doble
     parrafos = [p.strip() for p in re.split(r'\n\s*\n', texto_limpio) if p.strip()]
     unidades: List[str] = []
     for parrafo in parrafos:
@@ -82,7 +72,7 @@ def dividir_texto(texto: str, tamano_chunk: int = 1500, overlap: int = 200) -> L
     def _longitud(partes: List[str]) -> int:
         return sum(len(p) for p in partes) + 2 * (len(partes) - 1) if partes else 0
 
-    # 4. Fusion con overlap semantico
+    # 2. Construcción de Chunks con Overlap Flexible
     chunks: List[str] = []
     actuales: List[str] = []
 
@@ -92,19 +82,22 @@ def dividir_texto(texto: str, tamano_chunk: int = 1500, overlap: int = 200) -> L
             actuales = candidatas
             continue
 
-        # Cerrar el chunk actual
         if actuales:
             chunks.append("\n\n".join(actuales))
 
-            # Overlap: arrastrar unidades completas del final (<= overlap chars)
+            # Arrastre del overlap: toma unidades previas o aplica un corte de caracteres si la unidad es extensa
             cola: List[str] = []
             for previa in reversed(actuales):
                 if _longitud([previa]) + _longitud(cola) <= overlap:
                     cola.insert(0, previa)
                 else:
+                    # Si no cabe entera pero no hay nada en la cola, fuerza el arrastre parcial del final
+                    if not cola:
+                        corte_parcial = previa[-overlap:].strip()
+                        if corte_parcial:
+                            cola.insert(0, corte_parcial)
                     break
 
-            # Solo mantener la cola si deja espacio para la nueva unidad
             if _longitud(cola + [unidad]) <= tamano_chunk:
                 actuales = cola + [unidad]
             else:
@@ -126,17 +119,7 @@ def crear_chunks_con_metadata(
     chunks: List[str],
     chunk_offset: int = 0
 ) -> List[Dict[str, Any]]:
-    """
-    Asigna metadatos estructurados a cada chunk de texto.
-
-    :param document_id: ID del documento en SQLite.
-    :param document_name: Nombre asignado/almacenado del documento.
-    :param page: Número de página (1-indexed) o None.
-    :param section: Nombre o título de la sección si existe.
-    :param chunks: Lista de fragmentos de texto devueltos por `dividir_texto`.
-    :param chunk_offset: Índice base para numerar los chunks (para evitar duplicados entre páginas).
-    :return: Lista de diccionarios con la estructura requerida por ChromaDB y el flujo RAG.
-    """
+    """ Asigna metadatos estructurados a los chunks generados. """
     chunks_con_metadata: List[Dict[str, Any]] = []
 
     for idx, content in enumerate(chunks):

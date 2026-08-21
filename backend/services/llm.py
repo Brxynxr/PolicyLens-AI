@@ -6,9 +6,7 @@ import httpx
 class LLMService:
     """
     Servicio desacoplado para generar respuestas via LLM.
-    Soporta dos modos:
-    - "api": Proveedor externo compatible con OpenAI (NVIDIA NIM, OpenAI, etc.)
-    - "local": Ollama local (gemma2:2b, qwen2.5, etc.)
+    Usa un proveedor externo compatible con OpenAI (NVIDIA NIM, OpenAI, etc.)
     """
 
     SYSTEM_PROMPT = """Eres PolicyLens AI, un asistente experto en documentos internos de la empresa. Tu trabajo es ayudar a los empleados a encontrar informacion precisa sobre politicas, contratos y reglamentos.
@@ -25,12 +23,9 @@ REGLAS FUNDAMENTALES:
 9. Sé directo y preciso. No des vueltas. No inventes informacion que no este en el contexto."""
 
     def __init__(self):
-        self.provider = os.getenv("LLM_PROVIDER", "api")
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.base_url = os.getenv("LLM_BASE_URL", "https://integrate.api.nvidia.com/v1")
         self.model = os.getenv("LLM_MODEL", "meta/llama-3.1-8b-instruct")
-        self.ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
-        self.ollama_model = os.getenv("OLLAMA_MODEL", "gemma2:2b")
 
     def generar_respuesta(
         self,
@@ -39,8 +34,6 @@ REGLAS FUNDAMENTALES:
         fuentes: Optional[str] = None,
         historial: Optional[List[Dict[str, str]]] = None
     ) -> str:
-        if self.provider == "local":
-            return self._generar_ollama(pregunta, contexto, fuentes, historial)
         return self._generar_api(pregunta, contexto, fuentes, historial)
 
     def _construir_prompt(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
@@ -63,34 +56,6 @@ FUENTES: {fuentes if fuentes else "N/A"}
 PREGUNTA DEL EMPLEADO: {pregunta}
 
 INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el contexto. Busca la respuesta EXACTA en el contexto. Si los datos estan ahi, citarlos directamente. Si realmente no esta, indica que no encontraste la informacion en los documentos disponibles."""
-
-    def _generar_ollama(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
-        prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
-
-        messages = [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ]
-
-        payload = {
-            "model": self.ollama_model,
-            "messages": messages,
-            "stream": False,
-            "options": {
-                "temperature": 0.1,
-                "num_predict": 1534
-            }
-        }
-
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(
-                f"{self.ollama_url}/api/chat",
-                json=payload
-            )
-            response.raise_for_status()
-            data = response.json()
-
-        return data.get("message", {}).get("content", "") or "Respuesta vacía del modelo local."
 
     def _generar_api(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
         prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
