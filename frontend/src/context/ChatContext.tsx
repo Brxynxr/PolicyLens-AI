@@ -57,16 +57,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (selectId) {
         const fullChat = await obtenerConversacion(selectId)
         setActiveConv(fullChat)
-      } else if (data.length > 0 && !activeConv && location.pathname === '/chat') {
-        const fullChat = await obtenerConversacion(data[0].id)
-        setActiveConv(fullChat)
       }
     } catch {
       // Quiet fail if not authenticated
     } finally {
       setListLoading(false)
     }
-  }, [location.pathname, activeConv])
+  }, [])
 
   useEffect(() => {
     if (localStorage.getItem('user_id')) {
@@ -87,6 +84,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }
 
   const handleNewChat = () => {
+    // If already in a fresh chat with no messages, do nothing
+    if (!activeConv || !activeConv.messages || activeConv.messages.length === 0) {
+      if (location.pathname !== '/chat') {
+        navigate('/chat')
+      }
+      if (isMobileSidebarOpen) {
+        closeMobileSidebar()
+      }
+      return
+    }
+
     setActiveConv(null)
     setError(null)
     if (location.pathname !== '/chat') {
@@ -98,6 +106,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }
 
   const handleSelectChat = async (id: number) => {
+    if (activeConv?.id === id && location.pathname === '/chat') {
+      if (isMobileSidebarOpen) closeMobileSidebar()
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)

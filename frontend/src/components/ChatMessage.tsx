@@ -10,12 +10,22 @@ interface ChatMessageProps {
 export default function ChatMessage({ message, sources }: ChatMessageProps) {
   const isUser = message.role === 'user'
 
-  const formatTime = (isoString: string) => {
+  const formatTime = (isoString?: string) => {
+    if (!isoString) {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
     try {
-      const date = new Date(isoString)
+      let cleaned = isoString.replace(' ', 'T')
+      if (!cleaned.endsWith('Z') && !cleaned.includes('+') && !cleaned.includes('-', 10)) {
+        cleaned += 'Z'
+      }
+      const date = new Date(cleaned)
+      if (isNaN(date.getTime())) {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } catch {
-      return ''
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   }
 
