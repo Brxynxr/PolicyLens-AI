@@ -28,10 +28,10 @@ export default function Layout() {
       {/* 2. Unified Collapsible Sidebar (Desktop & Mobile Drawer) */}
       <aside 
         className={`
-          fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out shrink-0 overflow-hidden
           md:relative md:translate-x-0
           ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${isSidebarCollapsed ? 'md:w-0 md:overflow-hidden md:border-r-0' : 'md:w-72'}
+          ${isSidebarCollapsed ? 'md:w-0 md:border-r-0 md:opacity-0 pointer-events-none md:pointer-events-none' : 'md:w-72 md:opacity-100'}
         `}
       >
         <div className="w-72 h-full">
@@ -46,7 +46,7 @@ export default function Layout() {
           <div className="flex items-center gap-2.5">
             <button 
               onClick={toggleMobileSidebar}
-              className="p-1.5 rounded-lg border border-[#E8E2D6] bg-white text-neutral-700 hover:text-neutral-900 hover:bg-[#FAF8F5] transition-colors"
+              className="p-1.5 rounded-lg border border-[#E8E2D6] bg-white text-neutral-700 hover:text-neutral-900 hover:bg-[#FAF8F5] transition-colors cursor-pointer"
               aria-label="Abrir menú de navegación"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -60,22 +60,24 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Floating Sidebar Toggle Button for Desktop when Collapsed */}
-        {isSidebarCollapsed && (
-          <div className="hidden md:flex absolute top-3 left-4 z-30">
+        {/* Desktop Header for non-chat pages when sidebar is collapsed */}
+        {!isChatPage && isSidebarCollapsed && (
+          <header className="hidden md:flex items-center gap-3 px-6 py-3 border-b border-[#E8E2D6] bg-[#F5F0E8]/60 shrink-0">
             <button
               onClick={toggleSidebarCollapse}
-              className="p-2 rounded-xl bg-white border border-[#E8E2D6] hover:border-[#9E7111]/40 text-neutral-700 hover:text-[#9E7111] shadow-xs hover:shadow-sm transition-all flex items-center gap-2 cursor-pointer group"
+              className="p-1.5 rounded-lg border border-[#E8E2D6] bg-white hover:bg-[#FAF8F5] text-neutral-600 hover:text-neutral-900 transition-all cursor-pointer"
               title="Expandir barra lateral"
               aria-label="Expandir barra lateral"
             >
-              <svg className="w-4 h-4 text-neutral-500 group-hover:text-[#9E7111] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
               </svg>
-              <EyeOfHorus className="w-4 h-4" stroke="#9E7111" strokeWidth={2} />
-              <span className="text-xs font-bold text-neutral-800">PolicyLens</span>
             </button>
-          </div>
+            <div className="flex items-center gap-2">
+              <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
+              <span className="font-extrabold text-sm text-neutral-900 tracking-tight">PolicyLens AI</span>
+            </div>
+          </header>
         )}
 
         {/* Dynamic Page Outlet */}
