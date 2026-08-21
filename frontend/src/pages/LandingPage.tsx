@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isAuthenticated } from '../utils/auth'
+import EyeOfHorus from '../components/EyeOfHorus'
 
 export default function LandingPage() {
   const [showSplash, setShowSplash] = useState(true)
@@ -11,14 +12,14 @@ export default function LandingPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Step 1: Clean, Minimalist Centered Splash Entry
+  // Step 1: Clean, Minimalist Centered Splash Entry (Eye of Horus Luxury Branding)
   if (showSplash) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-brand-50 via-brand-50 to-brand-100/60 relative overflow-hidden select-none p-6">
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-[#FAF8F5] via-[#FAF8F5] to-[#F5F0E8] relative overflow-hidden select-none p-6">
         {/* Subtle Ambient Radial Glows */}
-        <div className="absolute w-[500px] h-[500px] rounded-full bg-gold-400/10 blur-3xl pointer-events-none animate-pulse-gold" />
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-brand-200/25 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-gold-300/15 blur-3xl pointer-events-none" />
+        <div className="absolute w-[500px] h-[500px] rounded-full bg-[#9E7111]/10 blur-3xl pointer-events-none animate-pulse-gold" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#E8E2D6]/40 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#FAF8F5] blur-3xl pointer-events-none" />
 
         {/* Single Centered Clickable Brand Block */}
         <button
@@ -33,36 +34,18 @@ export default function LandingPage() {
           title="Entrar a PolicyLens AI"
           aria-label="Entrar a PolicyLens AI: Navegador Inteligente de Políticas y Contratos Internos"
         >
-          {/* Authentic High-Resolution PolicyLens AI Icon (Favicon Vector Asset) */}
+          {/* Authentic Eye of Horus Luxury Vector Logo */}
           <div className="relative mb-6">
-            <div className="absolute -inset-3 rounded-3xl bg-gold-400/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-4 rounded-3xl bg-[#9E7111]/15 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             
-            <svg
-              className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-3xl shadow-xl shadow-gold-500/20 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-gold-500/30"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <defs>
-                <linearGradient id="plGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#c4941d" />
-                  <stop offset="50%" stopColor="#b8860b" />
-                  <stop offset="100%" stopColor="#996f09" />
-                </linearGradient>
-              </defs>
-              <rect width="32" height="32" rx="7" fill="url(#plGoldGrad)" />
-              {/* Left policy document column */}
-              <path d="M8 8h6v16H8V8z" fill="#ffffff" fillOpacity="0.95" />
-              {/* Right secondary policy column */}
-              <path d="M18 8h6v10h-6V8z" fill="#ffffff" fillOpacity="0.95" />
-              {/* Bottom right AI lens / smart node */}
-              <circle cx="21" cy="24" r="3" fill="#ffffff" fillOpacity="0.85" />
-            </svg>
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-3xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-xl shadow-gold-500/10 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-gold-500/20 group-hover:border-[#9E7111]/40">
+              <EyeOfHorus className="w-20 h-20 sm:w-22 sm:h-22 md:w-24 md:h-24" stroke="#9E7111" strokeWidth={2} />
+            </div>
           </div>
 
           {/* Primary Title with highlighted AI */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-neutral-900 tracking-tight leading-tight transition-colors group-hover:text-gold-700">
-            PolicyLens <span className="text-gold-600 font-black">AI</span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-neutral-900 tracking-tight leading-tight transition-colors group-hover:text-[#9E7111]">
+            PolicyLens <span className="text-[#9E7111] font-black">AI</span>
           </h1>
 
           {/* Exact Subtitle */}
@@ -76,9 +59,9 @@ export default function LandingPage() {
 
   // Step 2: Informative Home (Landing Page)
   return (
-    <div className="min-h-screen bg-brand-50 text-neutral-800 font-sans flex flex-col selection:bg-gold-500 selection:text-white animate-fade-in-up">
+    <div className="min-h-screen bg-[#FAF8F5] text-neutral-800 font-sans flex flex-col selection:bg-[#9E7111] selection:text-white animate-fade-in-up">
       {/* Sticky Header Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-brand-50/90 backdrop-blur-md border-b border-brand-200/70 transition-all">
+      <header className="sticky top-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#E8E2D6] transition-all">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo & Return to Splash */}
           <button
@@ -86,21 +69,14 @@ export default function LandingPage() {
             className="flex items-center gap-3 group text-left cursor-pointer focus:outline-hidden"
             title="Volver a la pantalla de entrada"
           >
-            <svg
-              className="w-8 h-8 rounded-lg shadow-sm shadow-gold-500/20 group-hover:scale-105 transition-transform"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect width="32" height="32" rx="6" fill="#b8860b" />
-              <path d="M8 8h6v16H8V8zm10 0h6v10h-6V8z" fill="white" opacity="0.95" />
-              <circle cx="21" cy="24" r="3" fill="white" opacity="0.85" />
-            </svg>
+            <div className="w-9 h-9 rounded-xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <EyeOfHorus className="w-6 h-6" stroke="#9E7111" strokeWidth={2} />
+            </div>
             <div>
               <span className="font-extrabold text-base text-neutral-900 tracking-tight leading-none block">
                 PolicyLens
               </span>
-              <span className="text-3xs uppercase font-bold tracking-widest text-gold-600 block">
+              <span className="text-3xs uppercase font-bold tracking-widest text-[#9E7111] block">
                 AI Platform
               </span>
             </div>
@@ -108,17 +84,17 @@ export default function LandingPage() {
 
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-neutral-600">
-            <a href="#inicio" className="hover:text-gold-600 transition-colors">Inicio</a>
-            <a href="#flujo" className="hover:text-gold-600 transition-colors">Cómo Funciona</a>
-            <a href="#beneficios" className="hover:text-gold-600 transition-colors">Problema & Solución</a>
-            <a href="#capacidades" className="hover:text-gold-600 transition-colors">Características</a>
+            <a href="#inicio" className="hover:text-[#9E7111] transition-colors">Inicio</a>
+            <a href="#flujo" className="hover:text-[#9E7111] transition-colors">Cómo Funciona</a>
+            <a href="#beneficios" className="hover:text-[#9E7111] transition-colors">Problema & Solución</a>
+            <a href="#capacidades" className="hover:text-[#9E7111] transition-colors">Características</a>
           </nav>
 
           {/* Action Login Button */}
           <div className="flex items-center gap-3">
             <Link
               to={isAuth ? '/chat' : '/login'}
-              className="px-4.5 py-2 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-xs shadow-md shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+              className="px-4.5 py-2 rounded-xl bg-[#9E7111] hover:bg-[#7a5807] text-white font-bold text-xs shadow-md shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
             >
               <span>{isAuth ? 'Ir a Consultas' : 'Iniciar Sesión'}</span>
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -137,13 +113,13 @@ export default function LandingPage() {
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
               {/* Left Column: Copywriting */}
               <div className="flex-1 text-center lg:text-left space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-100 border border-gold-200 text-gold-800 text-xs font-bold shadow-2xs">
-                  <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E8E2D6] text-[#9E7111] text-xs font-bold shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-[#9E7111] animate-pulse" />
                   <span>Plataforma RAG de Políticas Corporativas</span>
                 </div>
 
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-neutral-900 tracking-tight leading-[1.15]">
-                  Claridad instantánea para tus <span className="text-gold-600 underline decoration-gold-300 decoration-wavy decoration-2">políticas y contratos</span> internos.
+                  Claridad instantánea para tus <span className="text-[#9E7111] underline decoration-[#dcc9ad] decoration-wavy decoration-2">políticas y contratos</span> internos.
                 </h1>
 
                 <p className="text-base md:text-lg text-neutral-600 leading-relaxed font-normal max-w-xl mx-auto lg:mx-0">
@@ -154,7 +130,7 @@ export default function LandingPage() {
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <Link
                     to={isAuth ? '/chat' : '/login'}
-                    className="w-full sm:w-auto px-7 py-4 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm shadow-lg shadow-gold-500/25 hover:scale-[1.02] active:scale-95 transition-all text-center flex items-center justify-center gap-2.5"
+                    className="w-full sm:w-auto px-7 py-4 rounded-xl bg-[#9E7111] hover:bg-[#7a5807] text-white font-bold text-sm shadow-lg shadow-gold-500/25 hover:scale-[1.02] active:scale-95 transition-all text-center flex items-center justify-center gap-2.5"
                   >
                     <span>{isAuth ? 'Abrir Consultas RAG' : 'Comenzar / Iniciar Sesión'}</span>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -164,14 +140,14 @@ export default function LandingPage() {
 
                   <a
                     href="#flujo"
-                    className="w-full sm:w-auto px-6 py-4 rounded-xl border border-brand-200 bg-white hover:bg-brand-100 text-neutral-700 font-bold text-sm shadow-2xs hover:border-gold-300 transition-all text-center"
+                    className="w-full sm:w-auto px-6 py-4 rounded-xl border border-[#E8E2D6] bg-white hover:bg-[#F5F0E8] text-neutral-700 font-bold text-sm shadow-2xs hover:border-[#9E7111]/40 transition-all text-center"
                   >
                     Ver cómo funciona
                   </a>
                 </div>
 
                 {/* Key Metric Highlights */}
-                <div className="pt-6 grid grid-cols-3 gap-4 border-t border-brand-200/80 max-w-lg mx-auto lg:mx-0 text-left">
+                <div className="pt-6 grid grid-cols-3 gap-4 border-t border-[#E8E2D6] max-w-lg mx-auto lg:mx-0 text-left">
                   <div>
                     <p className="text-lg font-black text-neutral-900">100%</p>
                     <p className="text-2xs font-semibold text-neutral-400 uppercase tracking-wider">Citas Verificables</p>
@@ -189,15 +165,15 @@ export default function LandingPage() {
 
               {/* Right Column: Interactive UI Showcase Mockup */}
               <div className="flex-1 w-full max-w-lg lg:max-w-none">
-                <div className="relative rounded-3xl border border-brand-200 bg-white p-5 md:p-6 shadow-xl shadow-brand-200/40 animate-scale-up">
+                <div className="relative rounded-3xl border border-[#E8E2D6] bg-white p-5 md:p-6 shadow-xl shadow-brand-200/40 animate-scale-up">
                   {/* Window Bar Header */}
-                  <div className="flex items-center justify-between pb-4 mb-4 border-b border-brand-100">
+                  <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E8E2D6]/60">
                     <div className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full bg-red-400/80" />
                       <span className="w-3 h-3 rounded-full bg-amber-400/80" />
                       <span className="w-3 h-3 rounded-full bg-green-400/80" />
                     </div>
-                    <span className="text-3xs font-bold uppercase tracking-wider text-neutral-400 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200/60">
+                    <span className="text-3xs font-bold uppercase tracking-wider text-neutral-400 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8E2D6]">
                       PolicyLens AI &bull; Simulación RAG
                     </span>
                   </div>
@@ -206,18 +182,18 @@ export default function LandingPage() {
                   <div className="space-y-4 text-left">
                     {/* User Question */}
                     <div className="flex gap-3 items-start justify-end">
-                      <div className="bg-brand-100/70 border border-brand-200/50 rounded-2xl rounded-tr-xs p-3.5 max-w-[85%] text-xs font-medium text-neutral-800">
+                      <div className="bg-[#F5F0E8] border border-[#E8E2D6] rounded-2xl rounded-tr-xs p-3.5 max-w-[85%] text-xs font-medium text-neutral-800">
                         ¿Cuántos días de vacaciones me corresponden al cumplir el primer año y cómo se solicitan?
                       </div>
-                      <div className="w-7 h-7 rounded-lg bg-neutral-800 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-neutral-900 text-white flex items-center justify-center text-xs font-bold shrink-0">
                         U
                       </div>
                     </div>
 
                     {/* AI Response with Gold Bar */}
-                    <div className="flex gap-3 items-start relative bg-brand-50/40 border border-brand-200 rounded-2xl rounded-tl-xs p-4 shadow-2xs">
-                      <div className="w-7 h-7 rounded-lg bg-gold-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm shadow-gold-500/30">
-                        PL
+                    <div className="flex gap-3 items-start relative bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] rounded-2xl rounded-tl-xs p-4 shadow-2xs">
+                      <div className="w-7 h-7 rounded-lg bg-[#FAF8F5] border border-[#E8E2D6] flex items-center justify-center shrink-0">
+                        <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
                       </div>
                       <div className="flex-1 space-y-2.5 min-w-0">
                         <div className="flex items-center justify-between">
@@ -231,8 +207,8 @@ export default function LandingPage() {
                         </p>
 
                         {/* Source Snippet Card */}
-                        <div className="pt-2 border-t border-brand-200/60">
-                          <div className="p-2.5 rounded-xl bg-white border border-brand-200 flex items-center justify-between gap-2 shadow-2xs">
+                        <div className="pt-2 border-t border-[#E8E2D6]">
+                          <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D6] flex items-center justify-between gap-2 shadow-2xs">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="p-1 rounded bg-red-50 text-red-600 border border-red-100 text-3xs font-bold">PDF</span>
                               <div className="min-w-0">
@@ -240,7 +216,7 @@ export default function LandingPage() {
                                 <p className="text-3xs text-neutral-400">Pág. 32 &bull; Sección Vacaciones y Descansos</p>
                               </div>
                             </div>
-                            <span className="text-3xs font-bold text-gold-600 bg-gold-50 px-2 py-0.5 rounded-md border border-gold-200">
+                            <span className="text-3xs font-bold text-[#9E7111] bg-white px-2 py-0.5 rounded-md border border-[#E8E2D6]">
                               Fuente #1
                             </span>
                           </div>
@@ -255,10 +231,10 @@ export default function LandingPage() {
         </section>
 
         {/* 2. SYSTEM FLOW (Step-by-Step Overview) */}
-        <section id="flujo" className="py-20 bg-white border-y border-brand-200/70">
+        <section id="flujo" className="py-20 bg-white border-y border-[#E8E2D6]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-200">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-[#9E7111] bg-[#FAF8F5] px-3 py-1 rounded-full border border-[#E8E2D6]">
                 Arquitectura del Sistema
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight">
@@ -271,10 +247,10 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
               {/* Step 1 */}
-              <div className="bg-brand-50/50 border border-brand-200 rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-gold-300 transition-all duration-300 group">
+              <div className="bg-[#FAF8F5] border border-[#E8E2D6] rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-[#9E7111]/40 transition-all duration-300 group">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="w-12 h-12 rounded-2xl bg-gold-100 border border-gold-200 text-gold-700 font-extrabold text-lg flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                    <span className="w-12 h-12 rounded-2xl bg-white border border-[#E8E2D6] text-[#9E7111] font-extrabold text-lg flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
                       01
                     </span>
                     <span className="text-2xs font-bold uppercase tracking-wider text-neutral-400">Paso 1</span>
@@ -286,7 +262,7 @@ export default function LandingPage() {
                     Los administradores cargan políticas o manuales en formato <strong className="text-neutral-800">PDF, Word (DOCX) o HTML</strong>. Los empleados formulan preguntas en lenguaje natural sin requerir tecnicismos.
                   </p>
                 </div>
-                <div className="mt-6 pt-4 border-t border-brand-200/60 flex items-center gap-2 text-2xs font-bold text-gold-700">
+                <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center gap-2 text-2xs font-bold text-[#9E7111]">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
@@ -295,10 +271,10 @@ export default function LandingPage() {
               </div>
 
               {/* Step 2 */}
-              <div className="bg-brand-50/50 border border-brand-200 rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-gold-300 transition-all duration-300 group">
+              <div className="bg-[#FAF8F5] border border-[#E8E2D6] rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-[#9E7111]/40 transition-all duration-300 group">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="w-12 h-12 rounded-2xl bg-gold-500 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-gold-500/20 group-hover:scale-110 transition-transform">
+                    <span className="w-12 h-12 rounded-2xl bg-[#9E7111] text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-gold-500/20 group-hover:scale-110 transition-transform">
                       02
                     </span>
                     <span className="text-2xs font-bold uppercase tracking-wider text-neutral-400">Paso 2</span>
@@ -310,7 +286,7 @@ export default function LandingPage() {
                     El texto se fragmenta en <strong className="text-neutral-800">chunks semánticos con metadatos</strong> (página, sección, hash). Se generan embeddings y se indexan en <strong className="text-neutral-800">ChromaDB</strong> para recuperación por similitud de coseno y filtro léxico.
                   </p>
                 </div>
-                <div className="mt-6 pt-4 border-t border-brand-200/60 flex items-center gap-2 text-2xs font-bold text-gold-700">
+                <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center gap-2 text-2xs font-bold text-[#9E7111]">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                   </svg>
@@ -319,7 +295,7 @@ export default function LandingPage() {
               </div>
 
               {/* Step 3 */}
-              <div className="bg-brand-50/50 border border-brand-200 rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-gold-300 transition-all duration-300 group">
+              <div className="bg-[#FAF8F5] border border-[#E8E2D6] rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-[#9E7111]/40 transition-all duration-300 group">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="w-12 h-12 rounded-2xl bg-neutral-900 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-neutral-900/10 group-hover:scale-110 transition-transform">
@@ -334,7 +310,7 @@ export default function LandingPage() {
                     El LLM formula la respuesta utilizando <strong className="text-neutral-800">única y exclusivamente los fragmentos recuperados</strong>. El usuario visualiza la respuesta acompañada de tarjetas desplegables con el fragmento exacto y número de página.
                   </p>
                 </div>
-                <div className="mt-6 pt-4 border-t border-brand-200/60 flex items-center gap-2 text-2xs font-bold text-gold-700">
+                <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center gap-2 text-2xs font-bold text-[#9E7111]">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -346,10 +322,10 @@ export default function LandingPage() {
         </section>
 
         {/* 3. PROBLEM & SOLUTION BREAKDOWN */}
-        <section id="beneficios" className="py-20 bg-brand-50">
+        <section id="beneficios" className="py-20 bg-[#FAF8F5]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-gold-600 bg-gold-100 px-3 py-1 rounded-full border border-gold-200">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-[#9E7111] bg-white px-3 py-1 rounded-full border border-[#E8E2D6]">
                 Valor y Beneficios
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight">
@@ -391,16 +367,16 @@ export default function LandingPage() {
               </div>
 
               {/* The PolicyLens Solution */}
-              <div className="rounded-3xl border border-gold-300 bg-white p-6 md:p-8 space-y-6 shadow-md shadow-gold-500/10 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gold-400/10 rounded-bl-full pointer-events-none" />
+              <div className="rounded-3xl border border-[#9E7111]/40 bg-white p-6 md:p-8 space-y-6 shadow-md shadow-gold-500/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#9E7111]/10 rounded-bl-full pointer-events-none" />
                 
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gold-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-gold-500/30">
+                  <div className="w-10 h-10 rounded-xl bg-[#9E7111] text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-gold-500/30">
                     ✓
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-neutral-900">La Solución PolicyLens AI</h3>
-                    <p className="text-2xs text-gold-700 font-semibold">Precisión, inmediatez y trazabilidad total</p>
+                    <p className="text-2xs text-[#9E7111] font-semibold">Precisión, inmediatez y trazabilidad total</p>
                   </div>
                 </div>
 
@@ -424,10 +400,10 @@ export default function LandingPage() {
         </section>
 
         {/* 4. KEY CAPABILITIES (Características) */}
-        <section id="capacidades" className="py-20 bg-white border-t border-brand-200/70">
+        <section id="capacidades" className="py-20 bg-white border-t border-[#E8E2D6]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-200">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-[#9E7111] bg-[#FAF8F5] px-3 py-1 rounded-full border border-[#E8E2D6]">
                 Capacidades Principales
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight">
@@ -437,8 +413,8 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Feature 1 */}
-              <div className="p-6 rounded-2xl border border-brand-200 bg-brand-50/40 hover:border-gold-300 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-gold-100 border border-gold-200 text-gold-700 flex items-center justify-center">
+              <div className="p-6 rounded-2xl border border-[#E8E2D6] bg-[#FAF8F5] hover:border-[#9E7111]/40 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] text-[#9E7111] flex items-center justify-center shadow-xs">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
@@ -450,8 +426,8 @@ export default function LandingPage() {
               </div>
 
               {/* Feature 2 */}
-              <div className="p-6 rounded-2xl border border-brand-200 bg-brand-50/40 hover:border-gold-300 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-gold-100 border border-gold-200 text-gold-700 flex items-center justify-center">
+              <div className="p-6 rounded-2xl border border-[#E8E2D6] bg-[#FAF8F5] hover:border-[#9E7111]/40 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] text-[#9E7111] flex items-center justify-center shadow-xs">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
@@ -463,8 +439,8 @@ export default function LandingPage() {
               </div>
 
               {/* Feature 3 */}
-              <div className="p-6 rounded-2xl border border-brand-200 bg-brand-50/40 hover:border-gold-300 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-gold-100 border border-gold-200 text-gold-700 flex items-center justify-center">
+              <div className="p-6 rounded-2xl border border-[#E8E2D6] bg-[#FAF8F5] hover:border-[#9E7111]/40 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] text-[#9E7111] flex items-center justify-center shadow-xs">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
                   </svg>
@@ -476,8 +452,8 @@ export default function LandingPage() {
               </div>
 
               {/* Feature 4 */}
-              <div className="p-6 rounded-2xl border border-brand-200 bg-brand-50/40 hover:border-gold-300 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-gold-100 border border-gold-200 text-gold-700 flex items-center justify-center">
+              <div className="p-6 rounded-2xl border border-[#E8E2D6] bg-[#FAF8F5] hover:border-[#9E7111]/40 hover:bg-white transition-all duration-300 shadow-2xs space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] text-[#9E7111] flex items-center justify-center shadow-xs">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
@@ -493,11 +469,11 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-brand-100 border-t border-brand-200 py-8 text-neutral-500 text-xs">
+      <footer className="bg-[#F5F0E8] border-t border-[#E8E2D6] py-8 text-neutral-500 text-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gold-500 flex items-center justify-center text-white font-bold text-2xs">
-              PL
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-white border border-[#E8E2D6] flex items-center justify-center">
+              <EyeOfHorus className="w-4.5 h-4.5" stroke="#9E7111" strokeWidth={2} />
             </div>
             <span className="font-bold text-neutral-800">PolicyLens AI</span>
             <span className="text-neutral-400">&bull; Proyecto Académico RAG</span>

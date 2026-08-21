@@ -1,5 +1,6 @@
 import type { Message, ChatSource } from '../types'
 import SourceCard from './SourceCard'
+import EyeOfHorus from './EyeOfHorus'
 
 interface ChatMessageProps {
   message: Message
@@ -21,59 +22,59 @@ export default function ChatMessage({ message, sources }: ChatMessageProps) {
   return (
     <div 
       className={`
-        flex gap-4 p-4 md:p-6 rounded-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 duration-300
+        flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl transition-all duration-200 animate-fade-in-up
         ${isUser 
-          ? 'flex-row-reverse bg-brand-100/50 border border-brand-200/30' 
-          : 'bg-white border border-brand-200 shadow-2xs hover:shadow-xs relative overflow-hidden'}
+          ? 'flex-row-reverse bg-[#F5F0E8] border border-[#E8E2D6] ml-auto max-w-[88%] sm:max-w-[80%]' 
+          : 'bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-2xs relative w-full'}
       `}
     >
-      {/* Decorative vertical gold bar for assistant messages */}
-      {!isUser && (
-        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gold-500" />
-      )}
-
       {/* Avatar */}
       <div className="shrink-0">
         {isUser ? (
-          <div className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-100 flex items-center justify-center font-bold text-sm shadow-md shadow-neutral-800/10">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900 text-white flex items-center justify-center font-bold text-xs shadow-xs">
             U
           </div>
         ) : (
-          <div className="w-10 h-10 rounded-xl bg-gold-500 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-gold-500/20">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#FAF8F5] border border-[#E8E2D6] flex items-center justify-center shadow-xs">
+            <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 space-y-3.5 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="font-bold text-sm text-neutral-900">
-            {isUser ? 'Tú (Colaborador)' : 'PolicyLens AI'}
-          </span>
-          <span className="text-2xs text-neutral-400 font-medium">
+      <div className="flex-1 space-y-2.5 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-xs sm:text-sm text-neutral-900">
+              {isUser ? 'Tú' : 'PolicyLens AI'}
+            </span>
+            {!isUser && (
+              <span className="text-3xs font-extrabold uppercase text-[#9E7111] bg-[#FAF8F5] px-1.5 py-0.2 rounded border border-[#E8E2D6]">
+                Verificado
+              </span>
+            )}
+          </div>
+          <span className="text-3xs text-neutral-400 font-medium shrink-0">
             {formatTime(message.created_at)}
           </span>
         </div>
 
-        {/* Message bubble content */}
-        <p className="text-sm md:text-base text-neutral-700 leading-relaxed font-normal whitespace-pre-wrap">
+        {/* Message body */}
+        <p className="text-xs sm:text-sm text-neutral-700 leading-relaxed font-normal whitespace-pre-wrap">
           {message.content}
         </p>
 
         {/* Sources Render Block */}
         {!isUser && sources && sources.length > 0 && (
-          <div className="pt-4 border-t border-brand-100 space-y-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gold-600 uppercase tracking-wider">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <div className="pt-3 mt-3 border-t border-[#E8E2D6] space-y-2.5">
+            <div className="flex items-center gap-1.5 text-2xs font-extrabold text-[#9E7111] uppercase tracking-wider">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>Fuentes utilizadas ({sources.length}):</span>
+              <span>Fuentes de Verificación ({sources.length}):</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {sources.map((src, index) => (
                 <SourceCard key={index} source={src} />
               ))}

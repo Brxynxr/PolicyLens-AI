@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import EyeOfHorus from '../components/EyeOfHorus'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -28,33 +29,33 @@ export default function LoginPage() {
       navigate('/chat', { replace: true })
     } catch (err: any) {
       const detail = err?.response?.data?.detail
-      setError(detail || 'Error al iniciar sesion. Verifica tus credenciales.')
+      setError(detail || 'Error al iniciar sesión. Verifica tus credenciales.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5] p-4">
       <div className="w-full max-w-md animate-fade-in-up">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gold-500 flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-md shadow-gold-500/20">
-            PL
+          <div className="relative w-16 h-16 rounded-2xl bg-white border border-[#E8E2D6] flex items-center justify-center mx-auto mb-4 shadow-md shadow-gold-500/10">
+            <EyeOfHorus className="w-10 h-10" stroke="#9E7111" strokeWidth={2} />
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">PolicyLens</h1>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gold-600 mt-1">AI Platform</p>
+          <h1 className="text-2xl font-extrabold text-neutral-900 tracking-tight">PolicyLens</h1>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#9E7111] mt-1">AI Platform</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl border border-brand-200 shadow-2xs p-8">
-          <h2 className="text-lg font-bold text-neutral-900 mb-1">Iniciar Sesion</h2>
+        <div className="bg-white rounded-2xl border border-[#E8E2D6] shadow-2xs p-8">
+          <h2 className="text-lg font-bold text-neutral-900 mb-1">Iniciar Sesión</h2>
           <p className="text-xs text-neutral-400 font-medium mb-6">Ingresa tus credenciales para acceder al sistema</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-xs font-bold text-neutral-700 mb-1.5">
-                Correo electronico
+                Correo electrónico
               </label>
               <input
                 id="email"
@@ -63,22 +64,22 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@policylens.com"
                 required
-                className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E2D6] bg-white text-sm focus:outline-hidden focus:border-[#9E7111] focus:ring-1 focus:ring-[#9E7111]/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
               />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-xs font-bold text-neutral-700 mb-1.5">
-                Contrasena
+                Contraseña
               </label>
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Tu contrasena"
+                placeholder="Tu contraseña"
                 required
-                className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
+                className="w-full px-4 py-3 rounded-xl border border-[#E8E2D6] bg-white text-sm focus:outline-hidden focus:border-[#9E7111] focus:ring-1 focus:ring-[#9E7111]/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
               />
             </div>
 
@@ -95,10 +96,10 @@ export default function LoginPage() {
               type="submit"
               disabled={loading || !email.trim() || !password.trim()}
               className={`
-                w-full py-3.5 rounded-xl font-bold text-sm transition-all shadow-md
+                w-full py-3.5 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer
                 ${loading || !email.trim() || !password.trim()
                   ? 'bg-neutral-300 text-white shadow-none cursor-not-allowed'
-                  : 'bg-gold-500 hover:bg-gold-600 text-white shadow-gold-500/20 hover:scale-[1.01] active:scale-95'}
+                  : 'bg-[#9E7111] hover:bg-[#7a5807] text-white shadow-gold-500/20 hover:scale-[1.01] active:scale-95'}
               `}
             >
               {loading ? (
@@ -110,7 +111,7 @@ export default function LoginPage() {
                   Verificando...
                 </span>
               ) : (
-                'Iniciar Sesion'
+                'Iniciar Sesión'
               )}
             </button>
           </form>
@@ -120,14 +121,14 @@ export default function LoginPage() {
         <div className="text-center mt-6 space-y-2">
           <button
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-gold-600 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-[#9E7111] transition-colors cursor-pointer"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             <span>Volver a la presentación</span>
           </button>
-          <p className="text-2xs text-neutral-400 font-medium">
+          <p className="text-3xs text-neutral-400 font-medium">
             Sistema de Navegador Inteligente de Políticas &bull; RAG
           </p>
         </div>

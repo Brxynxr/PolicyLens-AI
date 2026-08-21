@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { isAuthenticated, isAdmin } from './utils/auth'
+import { ChatProvider } from './context/ChatContext'
 
 // Pages
 import LandingPage from './pages/LandingPage'
@@ -31,29 +32,30 @@ function AdminRoute() {
 
 export default function App() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/landing" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
+    <ChatProvider>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected routes */}
-      <Route element={<ProtectedRoute />}>
-        <Route element={<Layout />}>
-          <Route path="/chat" element={<ChatPage />} />
+        {/* Protected routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/chat" element={<ChatPage />} />
 
-          {/* Admin only */}
-          <Route element={<AdminRoute />}>
-            <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/sync" element={<SyncPage />} />
-            <Route path="/users" element={<UsersPage />} />
+            {/* Admin only */}
+            <Route element={<AdminRoute />}>
+              <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/sync" element={<SyncPage />} />
+              <Route path="/users" element={<UsersPage />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ChatProvider>
   )
 }
-

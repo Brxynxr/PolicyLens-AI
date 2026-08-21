@@ -4,10 +4,10 @@
   /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Brand Colors - Warm Neutral + Gold Accent */
+  /* Brand Colors - Warm Neutral + Luxury Gold Accent */
   --color-brand-50: #faf8f5;
   --color-brand-100: #f5f0e8;
-  --color-brand-200: #ebe0d0;
+  --color-brand-200: #e8e2d6;
   --color-brand-300: #dcc9ad;
   --color-brand-400: #c4a67a;
   --color-brand-500: #b08d55;
@@ -17,14 +17,14 @@
   --color-brand-900: #3d301c;
   --color-brand-950: #1f1810;
 
-  /* Gold Accent */
+  /* Gold / Ochre Accent */
   --color-gold-50: #fefce8;
   --color-gold-100: #fef9c3;
   --color-gold-200: #fef08a;
   --color-gold-300: #fde047;
-  --color-gold-400: #d4a017;
-  --color-gold-500: #b8860b;
-  --color-gold-600: #996f09;
+  --color-gold-400: #c59322;
+  --color-gold-500: #9e7111;
+  --color-gold-600: #9e7111;
   --color-gold-700: #7a5807;
   --color-gold-800: #5c4205;
   --color-gold-900: #3d2c03;
@@ -73,12 +73,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-neutral-300);
-  border-radius: 3px;
+  background: var(--color-brand-300);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neutral-400);
+  background: var(--color-brand-400);
 }
 
 /* Custom Premium Animations & Keyframes */
@@ -123,13 +123,13 @@ body {
 
 @keyframes pulseGold {
   0% {
-    box-shadow: 0 0 0 0 rgba(184, 134, 11, 0.4);
+    box-shadow: 0 0 0 0 rgba(158, 113, 17, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(184, 134, 11, 0);
+    box-shadow: 0 0 0 8px rgba(158, 113, 17, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(184, 134, 11, 0);
+    box-shadow: 0 0 0 0 rgba(158, 113, 17, 0);
   }
 }
 
@@ -193,4 +193,3 @@ body {
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
-
