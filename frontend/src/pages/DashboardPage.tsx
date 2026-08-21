@@ -18,9 +18,8 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [loading, setLoading] = useState(true)
-
-  const userName = localStorage.getItem('user_name') || 'Administrador'
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -34,6 +33,7 @@ export default function DashboardPage() {
       if (docsRes.status === 'fulfilled') setDocuments(docsRes.value.documents)
       if (usersRes.status === 'fulfilled') setUsers(usersRes.value.users)
       if (chatsRes.status === 'fulfilled') setConversations(chatsRes.value)
+      setLastUpdated(new Date())
     } finally {
       setLoading(false)
     }
@@ -116,43 +116,52 @@ export default function DashboardPage() {
     }))
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 6)
 
+  const formatFullDate = (d: Date) => {
+    return d.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }) + ` a las ` + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
   return (
-    <div className="space-y-8 pb-12">
-      {/* 1. Dashboard Welcome Hero Banner */}
-      <div className="bg-white border border-[#E8E2D6] rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-xl z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAF8F5] border border-[#E8E2D6] text-3xs font-extrabold uppercase tracking-wider text-[#9E7111]">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            <span>Centro de Control Administrativo</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight leading-tight">
-            Dashboard Ejecutivo &bull; <span className="text-[#9E7111]">PolicyLens AI</span>
+    <div className="space-y-6 pb-12">
+      {/* 1. Clean Minimalist Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-extrabold text-neutral-900 tracking-tight leading-tight">
+            Dashboard
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-600 font-medium leading-relaxed">
-            Bienvenido/a, <strong className="text-neutral-900">{userName}</strong>. Aquí tienes la visión panorámica del estado de la base documental, actividad de usuarios y consultas al motor RAG.
+          <p className="text-xs font-semibold text-neutral-500 mt-1 flex items-center gap-1.5">
+            <span>Resumen general</span>
+            <span>&bull;</span>
+            <span className="text-[#9E7111] font-bold">Actualizado: {formatFullDate(lastUpdated)}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 z-10">
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            onClick={fetchDashboardData}
+            disabled={loading}
+            className="p-2 rounded-xl bg-white border border-[#E8E2D6] hover:border-[#9E7111]/40 text-neutral-600 hover:text-[#9E7111] shadow-2xs transition-all cursor-pointer"
+            title="Refrescar métricas"
+            aria-label="Refrescar métricas"
+          >
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
+            </svg>
+          </button>
+
           <Link
             to="/chat"
-            className="px-4.5 py-3 rounded-xl bg-[#9E7111] hover:bg-[#7a5807] text-white font-bold text-xs shadow-md shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-[#9E7111] hover:bg-[#7a5807] text-white font-bold text-xs shadow-sm shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-1.5"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
             <span>Ir a Consultas</span>
-          </Link>
-          <Link
-            to="/documents"
-            className="px-4.5 py-3 rounded-xl border border-[#E8E2D6] bg-[#FAF8F5] hover:bg-white text-neutral-700 font-bold text-xs hover:border-[#9E7111]/40 transition-all"
-          >
-            Subir Documento
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
           </Link>
         </div>
-
-        {/* Ambient background decoration */}
-        <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-bl from-[#9E7111]/10 via-[#FAF8F5]/30 to-transparent rounded-bl-full pointer-events-none" />
       </div>
 
       {/* 2. Key Metrics KPI Grid */}
