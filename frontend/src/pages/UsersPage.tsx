@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { listarUsuarios, crearUsuario, editarUsuario, eliminarUsuario } from '../services/users'
 import type { User } from '../types'
 import UserModal from '../components/UserModal'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -11,6 +12,7 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   const fetchUsers = async () => {
     try {
@@ -39,12 +41,13 @@ export default function UsersPage() {
     setIsModalOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este usuario?')) return
-    setDeletingId(id)
+  const handleDelete = async () => {
+    if (!userToDelete) return
+    setDeletingId(userToDelete.id)
     try {
-      await eliminarUsuario(id)
+      await eliminarUsuario(userToDelete.id)
       await fetchUsers()
+      setUserToDelete(null)
     } catch {
       setError('Error al eliminar el usuario.')
     } finally {
@@ -191,7 +194,7 @@ export default function UsersPage() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => setUserToDelete(user)}
                           disabled={deletingId === user.id}
                           className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50/50 transition-all disabled:opacity-50"
                           title="Eliminar"
@@ -219,6 +222,18 @@ export default function UsersPage() {
             setIsModalOpen(false)
             setEditingUser(null)
           }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {userToDelete && (
+        <ConfirmDialog
+          title="Eliminar usuario"
+          message={`¿Seguro que deseas eliminar a "${userToDelete.nombre}" (${userToDelete.email})? El usuario perderá el acceso al sistema.`}
+          confirmLabel="Eliminar"
+          loading={deletingId !== null}
+          onConfirm={handleDelete}
+          onClose={() => setUserToDelete(null)}
         />
       )}
     </div>

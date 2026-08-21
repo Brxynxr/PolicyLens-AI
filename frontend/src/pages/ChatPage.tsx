@@ -7,6 +7,7 @@ import {
 } from '../services/chat'
 import type { Conversation, Message, ChatSource } from '../types'
 import ChatMessage from '../components/ChatMessage'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -16,6 +17,7 @@ export default function ChatPage() {
   const [listLoading, setListLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'rag' | 'search'>('rag')
+  const [chatToDelete, setChatToDelete] = useState<number | null>(null)
   
   const [activeSources, setActiveSources] = useState<Record<number, ChatSource[]>>({})
 
@@ -72,7 +74,12 @@ export default function ChatPage() {
 
   const handleDeleteChat = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation()
-    if (!window.confirm('Deseas eliminar este chat?')) return
+    setChatToDelete(id)
+  }
+
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return
+    const id = chatToDelete
     try {
       await eliminarConversacion(id)
       if (activeConv?.id === id) {
@@ -81,6 +88,8 @@ export default function ChatPage() {
       loadConversations()
     } catch {
       setError('Error al eliminar la conversacion.')
+    } finally {
+      setChatToDelete(null)
     }
   }
 
@@ -332,6 +341,17 @@ export default function ChatPage() {
           </div>
         </form>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {chatToDelete !== null && (
+        <ConfirmDialog
+          title="Eliminar conversación"
+          message="¿Seguro que deseas eliminar este chat? Se borrarán todos los mensajes y no podrá recuperarse."
+          confirmLabel="Eliminar"
+          onConfirm={confirmDeleteChat}
+          onClose={() => setChatToDelete(null)}
+        />
+      )}
     </div>
   )
 }

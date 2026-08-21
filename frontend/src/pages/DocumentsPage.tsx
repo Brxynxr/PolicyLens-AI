@@ -3,6 +3,7 @@ import { listarDocumentos, eliminarDocumento } from '../services/documents'
 import type { Document } from '../types'
 import DocumentCard from '../components/DocumentCard'
 import FileUpload from '../components/FileUpload'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -11,6 +12,7 @@ export default function DocumentsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [docToDelete, setDocToDelete] = useState<Document | null>(null)
 
   const fetchDocs = async () => {
     try {
@@ -29,12 +31,13 @@ export default function DocumentsPage() {
     fetchDocs()
   }, [])
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este documento de la base vectorial? Las consultas RAG ya no tendrán acceso a él.')) return
-    setDeletingId(id)
+  const handleDelete = async () => {
+    if (!docToDelete) return
+    setDeletingId(docToDelete.id)
     try {
-      await eliminarDocumento(id)
+      await eliminarDocumento(docToDelete.id)
       await fetchDocs()
+      setDocToDelete(null)
     } catch {
       setError('Error al eliminar el documento.')
     } finally {
@@ -142,6 +145,18 @@ export default function DocumentsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {docToDelete && (
+        <ConfirmDialog
+          title="Eliminar documento"
+          message={`¿Seguro que deseas eliminar "${docToDelete.original_name}" de la base vectorial? Las consultas RAG ya no tendrán acceso a él. Esta acción también borra el archivo físico.`}
+          confirmLabel="Eliminar"
+          loading={deletingId !== null}
+          onConfirm={handleDelete}
+          onClose={() => setDocToDelete(null)}
+        />
       )}
 
       {/* Floating Upload Modal */}
