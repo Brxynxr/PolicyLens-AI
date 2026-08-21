@@ -7,6 +7,7 @@ import { ChatProvider } from './context/ChatContext'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import ChatPage from './pages/ChatPage'
+import DashboardPage from './pages/DashboardPage'
 import DocumentsPage from './pages/DocumentsPage'
 import SyncPage from './pages/SyncPage'
 import UsersPage from './pages/UsersPage'
@@ -48,6 +49,7 @@ export default function App() {
 
               {/* Admin only */}
               <Route element={<AdminRoute />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/documents" element={<DocumentsPage />} />
                 <Route path="/sync" element={<SyncPage />} />
                 <Route path="/users" element={<UsersPage />} />

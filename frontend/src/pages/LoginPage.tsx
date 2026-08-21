@@ -14,7 +14,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (localStorage.getItem('user_id')) {
-      navigate('/chat', { replace: true })
+      const role = localStorage.getItem('user_role')
+      if (role === 'admin') {
+        navigate('/dashboard', { replace: true })
+      } else {
+        navigate('/chat', { replace: true })
+      }
     }
   }, [navigate])
 
@@ -29,7 +34,12 @@ export default function LoginPage() {
       localStorage.setItem('user_role', res.user.role)
       localStorage.setItem('user_name', res.user.nombre)
       toast.success(`Bienvenido/a de nuevo, ${res.user.nombre}.`, 'Sesión Iniciada')
-      navigate('/chat', { replace: true })
+      
+      if (res.user.role === 'admin') {
+        navigate('/dashboard', { replace: true })
+      } else {
+        navigate('/chat', { replace: true })
+      }
     } catch (err: any) {
       const detail = err?.response?.data?.detail || 'Error al iniciar sesión. Verifica tus credenciales.'
       setError(detail)
