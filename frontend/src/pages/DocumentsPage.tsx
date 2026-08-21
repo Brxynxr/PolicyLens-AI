@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { listarDocumentos, eliminarDocumento } from '../services/documents'
 import type { Document } from '../types'
@@ -145,16 +146,29 @@ export default function DocumentsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+          }}
+        >
           {documents.map((doc) => (
-            <DocumentCard
+            <motion.div key={doc.id} variants={{
+              hidden: { opacity: 0, y: 8 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }
+            }}>
+              <DocumentCard
               key={doc.id}
               document={doc}
               onDelete={handleDelete}
               deletingId={deletingId}
-            />
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Upload Modal Drawer */}

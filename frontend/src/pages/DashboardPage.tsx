@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { listarDocumentos } from '../services/documents'
@@ -356,14 +357,20 @@ export default function DashboardPage() {
             </div>
 
             {/* Timeline Stream */}
-            <div className="space-y-3">
+            <motion.div className="space-y-3" initial="hidden" animate="visible" variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+              }}>
               {recentActivities.length === 0 ? (
                 <p className="text-xs text-neutral-400 italic text-center py-6">
                   Sin actividad registrada aún
                 </p>
               ) : (
                 recentActivities.map((act) => (
-                  <div key={act.id} className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D6] space-y-1 hover:bg-[#F5F0E8]/50 transition-colors">
+                  <motion.div key={act.id} variants={{
+                    hidden: { opacity: 0, y: 8 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }
+                  }} className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D6] space-y-1 hover:bg-[#F5F0E8]/50 transition-colors">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-3xs font-extrabold uppercase px-1.5 py-0.2 rounded bg-white border border-[#E8E2D6] text-[#9E7111]">
                         {act.badge}
@@ -378,10 +385,10 @@ export default function DashboardPage() {
                     <p className="text-3xs text-neutral-500 leading-normal truncate">
                       {act.subtitle}
                     </p>
-                  </div>
+                  </motion.div>
                 ))
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

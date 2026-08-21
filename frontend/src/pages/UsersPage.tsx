@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { listarUsuarios, crearUsuario, editarUsuario, eliminarUsuario } from '../services/users'
 import type { User } from '../types'
@@ -162,9 +163,24 @@ export default function UsersPage() {
                   <th className="text-right px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-100">
+              <motion.tbody
+                className="divide-y divide-brand-100"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+                }}
+              >
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-brand-50/30 transition-colors">
+                  <motion.tr
+                    key={user.id}
+                    variants={{
+                      hidden: { opacity: 0, y: 8 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }
+                    }}
+                    className="hover:bg-brand-50/30 transition-colors"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-gold-100 border border-gold-200 flex items-center justify-center text-gold-700 font-bold text-xs shrink-0">
@@ -223,9 +239,9 @@ export default function UsersPage() {
                         </button>
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
-              </tbody>
+              </motion.tbody>
             </table>
           </div>
         )}

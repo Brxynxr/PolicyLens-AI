@@ -1,10 +1,34 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { motion, type Variants } from 'framer-motion'
 import { isAdmin } from '../utils/auth'
 import { useChat } from '../context/ChatContext'
 import BrandIcon from './BrandIcon'
 
 interface SidebarProps {
   onClose?: () => void
+}
+
+const listContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02
+    }
+  }
+}
+
+const listItemVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.25,
+      ease: 'easeOut'
+    }
+  }
 }
 
 export default function Sidebar({ onClose }: SidebarProps) {
@@ -144,33 +168,39 @@ export default function Sidebar({ onClose }: SidebarProps) {
           <p className="px-2 text-3xs font-extrabold uppercase tracking-wider text-neutral-400 mb-1.5">
             Administración
           </p>
-          <div className="space-y-0.5">
+          <motion.div 
+            className="space-y-0.5"
+            variants={listContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {adminNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                className={({ isActive }) => `
-                  flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border
-                  ${isActive 
-                    ? 'bg-white/95 backdrop-blur-xs text-neutral-900 font-bold border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-xs' 
-                    : 'bg-transparent border-transparent text-neutral-600 hover:bg-white/60 hover:border-[#E8E2D6]/70 hover:text-neutral-900'}
-                `}
-              >
-                {({ isActive }) => (
-                  <>
-                    <span className={`transition-colors ${isActive ? 'text-[#9E7111]' : 'text-neutral-400'}`}>
-                      {item.icon}
-                    </span>
-                    <span>{item.label}</span>
-                    {isActive && (
-                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#9E7111]" />
-                    )}
-                  </>
-                )}
-              </NavLink>
+              <motion.div key={item.to} variants={listItemVariants}>
+                <NavLink
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) => `
+                    flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border
+                    ${isActive 
+                      ? 'bg-white/95 backdrop-blur-xs text-neutral-900 font-bold border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-xs' 
+                      : 'bg-transparent border-transparent text-neutral-600 hover:bg-white/60 hover:border-[#E8E2D6]/70 hover:text-neutral-900'}
+                  `}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className={`transition-colors ${isActive ? 'text-[#9E7111]' : 'text-neutral-400'}`}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                      {isActive && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#9E7111]" />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       )}
 
@@ -203,7 +233,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </button>
       </div>
 
-      {/* 4. Middle Scroll Area: Recents History List */}
+      {/* 4. Middle Scroll Area: Recents History List with Stagger */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
         <div className="flex items-center justify-between px-2 py-1 mb-1">
           <span className="text-3xs font-extrabold uppercase tracking-wider text-neutral-400">
@@ -221,46 +251,54 @@ export default function Sidebar({ onClose }: SidebarProps) {
               Sin consultas recientes
             </div>
           ) : (
-            conversations.map((conv) => {
-              const isActive = activeConv?.id === conv.id && location.pathname === '/chat'
+            <motion.div
+              className="space-y-1"
+              variants={listContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {conversations.map((conv) => {
+                const isActive = activeConv?.id === conv.id && location.pathname === '/chat'
 
-              return (
-                <div
-                  key={conv.id}
-                  onClick={() => handleSelectChat(conv.id)}
-                  className={`
-                    group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs cursor-pointer transition-all duration-200
-                    ${isActive 
-                      ? 'bg-white/95 backdrop-blur-xs text-neutral-900 font-bold border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-xs' 
-                      : 'bg-transparent border border-transparent text-neutral-600 hover:bg-white/60 hover:border-[#E8E2D6]/70 hover:text-neutral-900'}
-                  `}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <svg 
-                      className={`w-3.5 h-3.5 shrink-0 transition-colors ${isActive ? 'text-[#9E7111]' : 'text-neutral-400 group-hover:text-neutral-600'}`} 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor" 
-                      strokeWidth="2"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                    <span className="truncate">{formatChatTitle(conv)}</span>
-                  </div>
-
-                  <button
-                    onClick={(e) => handleDeleteChat(e, conv.id)}
-                    className="p-1 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 cursor-pointer"
-                    title="Eliminar consulta"
-                    aria-label="Eliminar consulta"
+                return (
+                  <motion.div
+                    key={conv.id}
+                    variants={listItemVariants}
+                    onClick={() => handleSelectChat(conv.id)}
+                    className={`
+                      group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs cursor-pointer transition-all duration-200
+                      ${isActive 
+                        ? 'bg-white/95 backdrop-blur-xs text-neutral-900 font-bold border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-xs' 
+                        : 'bg-transparent border border-transparent text-neutral-600 hover:bg-white/60 hover:border-[#E8E2D6]/70 hover:text-neutral-900'}
+                    `}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              )
-            })
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <svg 
+                        className={`w-3.5 h-3.5 shrink-0 transition-colors ${isActive ? 'text-[#9E7111]' : 'text-neutral-400 group-hover:text-neutral-600'}`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor" 
+                        strokeWidth="2"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      <span className="truncate">{formatChatTitle(conv)}</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleDeleteChat(e, conv.id)}
+                      className="p-1 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 cursor-pointer"
+                      title="Eliminar consulta"
+                      aria-label="Eliminar consulta"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </motion.div>
+                )
+              })}
+            </motion.div>
           )}
         </div>
       </div>
