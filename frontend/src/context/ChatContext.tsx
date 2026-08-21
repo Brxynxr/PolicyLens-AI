@@ -7,6 +7,7 @@ import {
   eliminarConversacion 
 } from '../services/chat'
 import type { Conversation, Message, ChatSource } from '../types'
+import { useToast } from './ToastContext'
 
 interface ChatContextType {
   conversations: Conversation[]
@@ -45,6 +46,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
 
   const loadConversations = useCallback(async (selectId?: number) => {
     try {
@@ -109,6 +111,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       setError('Error al recuperar la conversación.')
+      toast.error('No se pudo cargar la conversación seleccionada.', 'Error de Historial')
     } finally {
       setLoading(false)
     }
@@ -116,15 +119,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const handleDeleteChat = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation()
-    if (!window.confirm('¿Deseas eliminar este chat del historial?')) return
+    const confirmed = await toast.confirmDialog({
+      title: 'Eliminar conversación',
+      message: '¿Estás seguro de que deseas eliminar este chat del historial? Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      isDestructive: true
+    })
+
+    if (!confirmed) return
+
     try {
       await eliminarConversacion(id)
       if (activeConv?.id === id) {
         setActiveConv(null)
       }
       await loadConversations()
+      toast.success('Conversación eliminada correctamente.')
     } catch {
       setError('Error al eliminar la conversación.')
+      toast.error('Ocurrió un error al intentar eliminar la conversación.', 'Error')
     }
   }
 
@@ -169,7 +183,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }))
       }
     } catch (err: any) {
-      setError(err.message || 'Error al procesar la respuesta del modelo.')
+      const msg = err.message || 'Error al procesar la respuesta del modelo.'
+      setError(msg)
+      toast.error(msg, 'Error RAG / Modelo')
     } finally {
       setLoading(false)
     }

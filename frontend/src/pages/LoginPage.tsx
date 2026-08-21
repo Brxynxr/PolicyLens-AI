@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import BrandIcon from '../components/BrandIcon'
+import { useToast } from '../context/ToastContext'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -9,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const toast = useToast()
 
   useEffect(() => {
     if (localStorage.getItem('user_id')) {
@@ -26,10 +28,12 @@ export default function LoginPage() {
       localStorage.setItem('user_id', String(res.user.id))
       localStorage.setItem('user_role', res.user.role)
       localStorage.setItem('user_name', res.user.nombre)
+      toast.success(`Bienvenido/a de nuevo, ${res.user.nombre}.`, 'Sesión Iniciada')
       navigate('/chat', { replace: true })
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
-      setError(detail || 'Error al iniciar sesión. Verifica tus credenciales.')
+      const detail = err?.response?.data?.detail || 'Error al iniciar sesión. Verifica tus credenciales.'
+      setError(detail)
+      toast.error(detail, 'Credenciales Inválidas')
     } finally {
       setLoading(false)
     }

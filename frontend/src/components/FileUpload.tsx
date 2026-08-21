@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { subirDocumento } from '../services/documents'
 import type { Document } from '../types'
+import { useToast } from '../context/ToastContext'
 
 interface FileUploadProps {
   onUploadSuccess: (doc: Document) => void
@@ -16,6 +17,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
   const [error, setError] = useState<string | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
+  const toast = useToast()
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -42,7 +44,9 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
     })
 
     if (invalid.length > 0) {
-      setError(`Archivos no permitidos (${invalid.join(', ')}). Solo se aceptan: .pdf, .docx, .html, .htm`)
+      const msg = `Archivos no permitidos (${invalid.join(', ')}). Solo se aceptan: .pdf, .docx, .html, .htm`
+      setError(msg)
+      toast.warning(msg, 'Formato No Permitido')
     } else {
       setError(null)
     }
@@ -88,6 +92,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
     setProgress(0)
 
     try {
+      const count = files.length
       for (let i = 0; i < files.length; i++) {
         setCurrentFileIndex(i)
         const currentFile = files[i]
@@ -98,10 +103,14 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
         })
         onUploadSuccess(doc)
       }
+      toast.success(`${count} documento${count > 1 ? 's' : ''} cargado e indexado con éxito en RAG.`, 'Carga Completa')
       setFiles([])
       setProgress(0)
+      onClose()
     } catch (err: any) {
-      setError(err.message || 'Error al procesar la carga de archivos.')
+      const msg = err.message || 'Error al procesar la carga de archivos.'
+      setError(msg)
+      toast.error(msg, 'Error de Indexación')
     } finally {
       setUploading(false)
     }
@@ -248,7 +257,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
         </div>
       )}
 
-      {/* Error alert */}
+      {/* Error display */}
       {error && (
         <div className="mt-4 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-700 text-xs font-semibold flex items-center gap-2">
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

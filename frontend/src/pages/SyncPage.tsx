@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { sincronizarDocumentos } from '../services/sync'
 import type { SyncSummaryResponse, SyncFileDetail } from '../types'
+import { useToast } from '../context/ToastContext'
 
 export default function SyncPage() {
   const [syncing, setSyncing] = useState(false)
   const [result, setResult] = useState<SyncSummaryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const toast = useToast()
 
   const getStatusColor = (status: SyncFileDetail['status']) => {
     switch (status) {
@@ -33,8 +35,16 @@ export default function SyncPage() {
     try {
       const data = await sincronizarDocumentos()
       setResult(data)
+      const totalChanges = data.added.length + data.updated.length
+      if (totalChanges > 0) {
+        toast.success(`Sincronización completada: ${data.added.length} nuevos, ${data.updated.length} actualizados.`, 'Sincronización Exitosa')
+      } else {
+        toast.info('Directorio sincronizado. No se detectaron cambios en los archivos físicos.', 'Al Día')
+      }
     } catch {
-      setError('Ocurrió un error inesperado al intentar sincronizar los directorios.')
+      const msg = 'Ocurrió un error inesperado al intentar sincronizar los directorios.'
+      setError(msg)
+      toast.error(msg, 'Fallo de Sincronización')
     } finally {
       setSyncing(false)
     }

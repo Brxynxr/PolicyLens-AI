@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { listarUsuarios, crearUsuario, editarUsuario, eliminarUsuario } from '../services/users'
 import type { User } from '../types'
 import UserModal from '../components/UserModal'
+import { useToast } from '../context/ToastContext'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -12,6 +13,8 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
+  const toast = useToast()
+
   const fetchUsers = async () => {
     try {
       setLoading(true)
@@ -20,6 +23,7 @@ export default function UsersPage() {
       setTotal(res.total)
     } catch {
       setError('Error al cargar la lista de usuarios.')
+      toast.error('No se pudo cargar el listado de usuarios del sistema.', 'Error de Servidor')
     } finally {
       setLoading(false)
     }
@@ -40,27 +44,44 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este usuario?')) return
+    const confirmed = await toast.confirmDialog({
+      title: 'Eliminar usuario',
+      message: '¿Estás seguro de que deseas eliminar este usuario? Perderá el acceso inmediato a la plataforma.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      isDestructive: true
+    })
+
+    if (!confirmed) return
+
     setDeletingId(id)
     try {
       await eliminarUsuario(id)
+      toast.success('Usuario eliminado satisfactoriamente.')
       await fetchUsers()
     } catch {
       setError('Error al eliminar el usuario.')
+      toast.error('Ocurrió un problema al intentar eliminar el usuario.', 'Error')
     } finally {
       setDeletingId(null)
     }
   }
 
   const handleSave = async (data: any) => {
-    if (editingUser) {
-      await editarUsuario(editingUser.id, data)
-    } else {
-      await crearUsuario(data)
+    try {
+      if (editingUser) {
+        await editarUsuario(editingUser.id, data)
+        toast.success(`Usuario ${data.nombre} actualizado correctamente.`, 'Actualización Exitosa')
+      } else {
+        await crearUsuario(data)
+        toast.success(`Usuario ${data.nombre} creado con éxito.`, 'Usuario Creado')
+      }
+      setIsModalOpen(false)
+      setEditingUser(null)
+      await fetchUsers()
+    } catch (err: any) {
+      toast.error(err.message || 'Error al guardar los datos del usuario.', 'Error de Guardado')
     }
-    setIsModalOpen(false)
-    setEditingUser(null)
-    await fetchUsers()
   }
 
   const formatDate = (dateStr: string) => {
@@ -76,7 +97,7 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">Gestion de Usuarios</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">Gestión de Usuarios</h1>
           <p className="text-xs font-semibold text-neutral-400 mt-1 uppercase tracking-wider">
             {total} usuario{total !== 1 ? 's' : ''} registrado{total !== 1 ? 's' : ''}
           </p>
@@ -183,7 +204,7 @@ export default function UsersPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleEdit(user)}
-                          className="p-2 rounded-lg text-neutral-400 hover:text-gold-600 hover:bg-gold-50 transition-all"
+                          className="p-2 rounded-lg text-neutral-400 hover:text-gold-600 hover:bg-gold-50 transition-all cursor-pointer"
                           title="Editar"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -193,7 +214,7 @@ export default function UsersPage() {
                         <button
                           onClick={() => handleDelete(user.id)}
                           disabled={deletingId === user.id}
-                          className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50/50 transition-all disabled:opacity-50"
+                          className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50/50 transition-all disabled:opacity-50 cursor-pointer"
                           title="Eliminar"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
