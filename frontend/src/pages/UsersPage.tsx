@@ -74,29 +74,36 @@ export default function UsersPage() {
     })
   }
 
+  const getRoleBadge = (role: string) => {
+    if (role === 'admin') {
+      return 'bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20'
+    }
+    return 'bg-slate-100 text-slate-600 border border-slate-200'
+  }
+
   return (
-    <div className="space-y-6 relative min-h-[calc(100vh-10rem)]">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">Gestion de Usuarios</h1>
-          <p className="text-xs font-semibold text-neutral-400 mt-1 uppercase tracking-wider">
-            {total} usuario{total !== 1 ? 's' : ''} registrado{total !== 1 ? 's' : ''}
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight">Gestion de Usuarios</h1>
+          <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">
+            {total} usuario{total !== 1 ? 's' : ''} registrado{total !== 1 ? 's' : ''} &bull; Panel de administracion
           </p>
         </div>
         <button
           onClick={handleCreate}
-          className="px-4.5 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm shadow-md shadow-gold-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold shadow-md shadow-[#7C3AED]/20 transition-all"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          <span>Crear Usuario</span>
+          Crear Usuario
         </button>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 text-[#FF6B6B] text-xs font-semibold flex items-center gap-2">
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
@@ -104,8 +111,8 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-brand-200 overflow-hidden shadow-2xs">
+      {/* Users Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-8 space-y-4">
             {[1, 2, 3].map((n) => (
@@ -121,72 +128,73 @@ export default function UsersPage() {
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center text-gold-600 mb-6 shadow-sm">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-4">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
-            <h3 className="text-base font-bold text-neutral-800">No hay usuarios registrados</h3>
-            <p className="text-xs text-neutral-400 mt-2 font-medium max-w-xs leading-relaxed">
+            <h3 className="text-sm font-bold text-slate-800">No hay usuarios registrados</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs">
               Crea el primer usuario para comenzar a gestionar el acceso al sistema.
             </p>
+            <button
+              onClick={handleCreate}
+              className="mt-4 px-4 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold shadow-md shadow-[#7C3AED]/20 transition-all"
+            >
+              Crear primer usuario
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-brand-200 bg-brand-50/40">
-                  <th className="text-left px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider">Usuario</th>
-                  <th className="text-left px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
-                  <th className="text-left px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider">Rol</th>
-                  <th className="text-left px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden md:table-cell">Estado</th>
-                  <th className="text-left px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider hidden lg:table-cell">Creado</th>
-                  <th className="text-right px-6 py-3.5 text-xs font-bold text-neutral-500 uppercase tracking-wider">Acciones</th>
+                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3.5 px-6">Usuario</th>
+                  <th className="py-3.5 px-6 hidden sm:table-cell">Email</th>
+                  <th className="py-3.5 px-6">Rol</th>
+                  <th className="py-3.5 px-6 hidden md:table-cell">Estado</th>
+                  <th className="py-3.5 px-6 hidden lg:table-cell">Creado</th>
+                  <th className="py-3.5 px-6 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-100">
+              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-brand-50/30 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={user.id} className="hover:bg-slate-50/50 transition-all">
+                    <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gold-100 border border-gold-200 flex items-center justify-center text-gold-700 font-bold text-xs shrink-0">
+                        <div className="w-9 h-9 rounded-lg bg-[#7C3AED]/10 border border-[#7C3AED]/20 flex items-center justify-center text-[#7C3AED] font-bold text-xs shrink-0">
                           {user.nombre.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-neutral-800 truncate">{user.nombre}</p>
-                          <p className="text-xs text-neutral-400 sm:hidden truncate">{user.email}</p>
+                          <p className="text-sm font-bold text-slate-900 truncate">{user.nombre}</p>
+                          <p className="text-xs text-slate-400 sm:hidden truncate">{user.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 hidden sm:table-cell">
-                      <span className="text-sm text-neutral-600 font-medium">{user.email}</span>
+                    <td className="py-4 px-6 hidden sm:table-cell">
+                      <span className="text-sm text-slate-600 font-medium">{user.email}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`
-                        inline-flex px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider
-                        ${user.role === 'admin'
-                          ? 'bg-gold-100 text-gold-700 border border-gold-200'
-                          : 'bg-brand-100 text-neutral-600 border border-brand-200'}
-                      `}>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${getRoleBadge(user.role)}`}>
                         {user.role}
                       </span>
                     </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
+                    <td className="py-4 px-6 hidden md:table-cell">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-neutral-300'}`} />
-                        <span className="text-xs font-semibold text-neutral-500">
+                        <div className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-[#48BB78]' : 'bg-slate-300'}`} />
+                        <span className="text-xs font-semibold text-slate-500">
                           {user.is_active ? 'Activo' : 'Inactivo'}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <span className="text-xs text-neutral-400 font-medium">{formatDate(user.created_at)}</span>
+                    <td className="py-4 px-6 hidden lg:table-cell">
+                      <span className="text-xs text-slate-400 font-medium">{formatDate(user.created_at)}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="py-4 px-6">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleEdit(user)}
-                          className="p-2 rounded-lg text-neutral-400 hover:text-gold-600 hover:bg-gold-50 transition-all"
+                          className="p-2 rounded-lg text-slate-400 hover:text-[#7C3AED] hover:bg-[#7C3AED]/10 transition-all"
                           title="Editar"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -196,12 +204,16 @@ export default function UsersPage() {
                         <button
                           onClick={() => setUserToDelete(user)}
                           disabled={deletingId === user.id}
-                          className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50/50 transition-all disabled:opacity-50"
+                          className="p-2 rounded-lg text-slate-400 hover:text-[#FF6B6B] hover:bg-[#FF6B6B]/10 transition-all disabled:opacity-50"
                           title="Eliminar"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          {deletingId === user.id ? (
+                            <div className="w-4 h-4 border-2 border-slate-200 border-t-[#FF6B6B] rounded-full animate-spin"></div>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -229,7 +241,7 @@ export default function UsersPage() {
       {userToDelete && (
         <ConfirmDialog
           title="Eliminar usuario"
-          message={`¿Seguro que deseas eliminar a "${userToDelete.nombre}" (${userToDelete.email})? El usuario perderá el acceso al sistema.`}
+          message={`¿Seguro que deseas eliminar a "${userToDelete.nombre}" (${userToDelete.email})? El usuario perdera el acceso al sistema.`}
           confirmLabel="Eliminar"
           loading={deletingId !== null}
           onConfirm={handleDelete}

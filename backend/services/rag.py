@@ -1,13 +1,27 @@
+import json
 import os
 import re
 import unicodedata
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Generator
 import chromadb
 from sqlalchemy.orm import Session
 
 from backend.services.embeddings import EmbeddingService
 from backend.services.llm import LLMService
 from backend.models.conversation import Conversation, Message
+from backend.utils.text_cleaner import (
+    limpiar_texto_pasaje,
+    formatear_cita,
+    nombre_documento_legible,
+    sin_tildes,
+    ACRONIMOS_DOC,
+    PALABRAS_ESTRUCTURALES,
+)
+
+# Aliases para compatibilidad interna
+_formatear_cita = formatear_cita
+_nombre_documento_legible = nombre_documento_legible
+_PALABRAS_ESTRUCTURALES = PALABRAS_ESTRUCTURALES
 
 try:
     from rank_bm25 import BM25Okapi
@@ -22,7 +36,7 @@ def _sin_tildes(texto: str) -> str:
     Permite que consultas escritas sin enie ni tildes coincidan con el texto
     de los documentos al tokenizar (matching lexico insensible a acentos).
     """
-    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    return sin_tildes(texto)
 
 
 def _tokenizar(texto: str) -> List[str]:
@@ -58,11 +72,13 @@ TEMAS_CONOCIDOS = {
 }
 
 # --- Parametros de puntuacion y filtrado RAG ---
+# Calibrados con DIAGNOSTICO_BGE_M3.md: los relevantes observados van de cos ~44 a ~69
+# y el ruido out-of-domain se queda en ~27-31, por lo que el corte en 42 aisla el ruido.
 PESO_COSENO = 0.85              # Peso semantico dentro del score hibrido
 PESO_BM25 = 0.15                # Peso lexico dentro del score hibrido
-UMBRAL_COS_RELEVANTE = 26.0     # Coseno minimo para considerar relevante un fragmento
-UMBRAL_HIBRIDO_RELEVANTE = 28.0  # Score hibrido minimo para considerar relevante un fragmento
-UMBRAL_COS_FALLBACK = 22.0      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
+UMBRAL_COS_RELEVANTE = 42.0     # Coseno minimo para considerar relevante un fragmento
+UMBRAL_HIBRIDO_RELEVANTE = 45.0  # Score hibrido minimo para considerar relevante un fragmento
+UMBRAL_COS_FALLBACK = 38.0      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
 METADATA_BOOST = 15.0           # Bonus por coincidencia pregunta <-> nombre de archivo
 
 # Sinonimos de dominio: termino de la pregunta -> tokens esperables en el nombre
@@ -107,6 +123,20 @@ SINONIMOS_NOMBRE_DOC = {
     "rrhh": {"manual", "rrhh"},
 }
 
+# Terminos calificadores/superlativos: si aparecen tanto en la pregunta como en
+# una oracion candidata, esta recibe multiplicador x2 en _extraer_pasaje_clave.
+# Formatos sin tildes para coincidir con la salida de _tokenizar.
+CALIFICADORES_BOOST = {
+    "excepcional", "excepcionales",
+    "maximo", "maxima", "maximos", "maximas",
+    "minimo", "minima", "minimos", "minimas",
+    "destacado", "destacada",
+    "superior", "superiores",
+    "optimo", "optima",
+    "prioritario", "prioritaria",
+    "critico", "critica",
+}
+
 
 class RAGService:
     """
@@ -132,7 +162,9 @@ class RAGService:
         self.embedding_service = EmbeddingService()
         self.llm_service = LLMService()
 
-        chroma_path = os.path.join(os.path.dirname(__file__), "../../chroma_data")
+        # Ruta configurable via CHROMA_PATH; por defecto el almacén productivo
+        # del proyecto. Los tests fijan esta variable para aislar su colección.
+        chroma_path = os.getenv("CHROMA_PATH") or os.path.join(os.path.dirname(__file__), "../../chroma_data")
         os.makedirs(chroma_path, exist_ok=True)
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
 
@@ -175,7 +207,10 @@ class RAGService:
         if not terminos_pregunta or not document_name:
             return 0.0
 
-        nombre_tokens = set(_tokenizar(document_name))
+        # Los nombres de archivo usan guiones bajos/puntos que \w trata como parte
+        # de la palabra: normalizarlos a espacios para tokenizarlos por separado.
+        # 'politica_salario_beneficios.docx' -> ['politica', 'salario', 'beneficios', 'docx']
+        nombre_tokens = set(_tokenizar(re.sub(r"[\._\-]", " ", document_name)))
         objetivos: set = set()
         for termino in terminos_pregunta:
             objetivos.add(termino)
@@ -203,7 +238,7 @@ class RAGService:
                 "chunk_index": chunk["chunk_index"]
             })
 
-        embeddings = self.embedding_service.generar_embeddings_lote(documents, local=True)
+        embeddings = self.embedding_service.generar_embeddings_lote(documents)
 
         try:
             self.collection.upsert(
@@ -234,8 +269,8 @@ class RAGService:
         except Exception:
             pass
 
-    def buscar_fragmentos(self, pregunta: str, top_k: int = 5, local: bool = True) -> List[Dict[str, Any]]:
-        pregunta_embedding = self.embedding_service.generar_embedding(pregunta, local=local)
+    def buscar_fragmentos(self, pregunta: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        pregunta_embedding = self.embedding_service.generar_embedding(pregunta)
 
         try:
             results = self.collection.query(
@@ -268,12 +303,66 @@ class RAGService:
         return t.strip()
 
     def _extraer_pasaje_clave(self, pregunta: str, contenido: str) -> str:
+        """
+        Extrae el pasaje mas relevante del chunk para la respuesta directa del
+        modo Search. Estrategia: puntuar oraciones individuales por solapamiento
+        lexico con la pregunta (con multiplicador x2 si contienen un calificador
+        presente en ella) y devolver la mejor junto con su vecina mas aporte.
+        Si no hay senal diferencial, degrada al snippet por bloques historico.
+        """
         contenido = self._limpiar_texto(contenido)
 
         # Texto corto: devolver completo sin fragmentar
         if len(contenido) < 600:
             return contenido
 
+        palabras = set(_tokenizar(pregunta)) - STOPWORDS_ES
+        if not palabras:
+            return self._pasaje_por_bloques(pregunta, contenido)
+
+        calificadores_pregunta = palabras & CALIFICADORES_BOOST
+
+        # 1) Division por oraciones: puntuacion (.!?) seguida de espacio/salto
+        oraciones = [o.strip() for o in re.split(r'(?<=[.!?])\s+', contenido) if o.strip()]
+        if len(oraciones) <= 1:
+            return self._pasaje_por_bloques(pregunta, contenido)
+
+        # 2) Puntuacion por oracion: solapamiento de keywords de la pregunta;
+        #    x2.0 si la oracion contiene un calificador/superlativo de la pregunta
+        puntuadas = []
+        for idx, oracion in enumerate(oraciones):
+            tokens = set(_tokenizar(oracion))
+            score = float(sum(1 for p in palabras if p in tokens))
+            if score > 0 and calificadores_pregunta & tokens:
+                score *= 2.0
+            puntuadas.append((score, idx))
+
+        mejor_score, mejor_idx = max(puntuadas, key=lambda x: x[0])
+
+        # 3) Ninguna oracion coincide con la pregunta: snippet por defecto
+        if mejor_score <= 0:
+            return self._pasaje_por_bloques(pregunta, contenido)
+
+        # Vecino adyacente con mayor aporte; empate -> el siguiente (continuidad)
+        prev_idx = mejor_idx - 1 if mejor_idx > 0 else None
+        next_idx = mejor_idx + 1 if mejor_idx + 1 < len(oraciones) else None
+        if prev_idx is None:
+            vecino_idx = next_idx
+        elif next_idx is None:
+            vecino_idx = prev_idx
+        else:
+            vecino_idx = next_idx if puntuadas[next_idx][0] >= puntuadas[prev_idx][0] else prev_idx
+
+        pasaje = ' '.join(oraciones[i] for i in sorted({mejor_idx, vecino_idx}))
+
+        # Fallback final: pasaje demasiado corto -> devolver el chunk completo
+        if len(pasaje.strip()) < 100:
+            return contenido
+
+        return pasaje
+
+    def _pasaje_por_bloques(self, pregunta: str, contenido: str) -> str:
+        """Snippet por defecto: seleccion de parrafos narrativos (comportamiento historico)."""
         # Division por parrafos; si no hay saltos dobles, reintentar con saltos sencillos
         bloques = [b.strip() for b in contenido.split('\n\n') if b.strip()]
         if len(bloques) <= 1:
@@ -315,17 +404,15 @@ class RAGService:
 
         return pasaje
 
-    def preguntar(
+    def _preparar_contexto_y_fuentes(
         self,
         pregunta: str,
         db: Session,
-        conversation_id: Optional[int] = None,
-        mode: str = "rag"
+        conversation_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Orquesta el flujo completo RAG: recuperar/crear conversación, buscar contexto,
-        incorporar historial conversacional, generar respuesta (vía LLM o búsquedas locales)
-        y guardar mensajes en la BD.
+        Recupera el historial conversacional, ejecuta la búsqueda semántica e híbrida
+        y prepara las fuentes y el contexto para la generación.
         """
         # 1. Recuperar conversación existente o crear una nueva
         conversation = None
@@ -389,11 +476,9 @@ class RAGService:
             query_busqueda = f"{ultimo_contexto} {pregunta}"
 
         # 5. Buscar fragmentos relevantes
-        fragmentos = self.buscar_fragmentos(query_busqueda, top_k=12, local=True)
+        fragmentos = self.buscar_fragmentos(query_busqueda, top_k=12)
 
-        # 4. Calcular scores combinados (semántico + BM25 léxico)
-        # Términos de consulta sin stopwords ni tildes: preguntas largas en lenguaje
-        # natural no penalizan el score léxico y 'año'/'ano' o 'días'/'dias' equivalen.
+        # 6. Calcular scores combinados (semántico + BM25 léxico)
         terminos_query = [
             w for w in _tokenizar(pregunta)
             if w not in STOPWORDS_ES and len(w) > 2
@@ -403,11 +488,9 @@ class RAGService:
         if BM25_DISPONIBLE and terminos_query and fragmentos:
             corpus = [_tokenizar(frag["content"]) for frag in fragmentos]
             bm25 = BM25Okapi(corpus)
-            # get_scores retorna un ndarray: convertir a lista para evitar ambiguedad booleana
             scores_raw = [float(s) for s in bm25.get_scores(terminos_query)]
             max_bm25 = max(scores_raw) if scores_raw else 0.0
             if max_bm25 > 0:
-                # Normalización relativa a 0-100: ranking entre los fragments recuperados
                 bm25_scores = [(s / max_bm25) * 100.0 for s in scores_raw]
 
         for i, frag in enumerate(fragmentos):
@@ -420,14 +503,10 @@ class RAGService:
             frag["cos_score"] = cos_sim
             frag["bm25_score"] = bm25_norm
             frag["metadata_boost"] = boost_doc
-            # Rebalanceo semantico (0.85/0.15): evita que documentos genericos que
-            # repiten terminos comunes tapen a los documentos especificos de politicas
             frag["hybrid_score"] = round((cos_sim * PESO_COSENO) + (bm25_norm * PESO_BM25) + boost_doc, 1)
 
-        # Ordenar por score híbrido
         fragmentos.sort(key=lambda x: x.get("hybrid_score", 0), reverse=True)
 
-        # Filtrar fuentes relevantes con umbrales suavizados (evita falsos negativos)
         if fragmentos:
             fragmentos_relevantes_raw = [
                 f for f in fragmentos
@@ -435,15 +514,11 @@ class RAGService:
                 and f.get("hybrid_score", 0) >= UMBRAL_HIBRIDO_RELEVANTE
             ]
 
-            # Fallback a Top-1: si ningun fragmento supero los umbrales pero la
-            # busqueda vectorial devolvio resultados, entregar siempre el mejor
-            # disponible siempre que su senal semantica sea minimamente aceptable.
             if not fragmentos_relevantes_raw:
                 mejor = fragmentos[0]
                 if mejor.get("cos_score", 0) >= UMBRAL_COS_FALLBACK:
                     fragmentos_relevantes_raw = [mejor]
 
-            # Deduplicar por documento, quedarse con el chunk de mayor score, máximo 2
             seen_docs = set()
             fragmentos_relevantes = []
             for f in fragmentos_relevantes_raw:
@@ -451,7 +526,7 @@ class RAGService:
                 if doc_name not in seen_docs:
                     seen_docs.add(doc_name)
                     fragmentos_relevantes.append(f)
-            fragmentos_relevantes = fragmentos_relevantes[:2]  # Máximo 2 chunks al LLM
+            fragmentos_relevantes = fragmentos_relevantes[:2]
         else:
             fragmentos_relevantes = []
 
@@ -473,7 +548,47 @@ class RAGService:
         contexto = "\n\n".join(contexto_parts)
         fuentes_str = "\n".join([f"- {f['document']}, p.{f['page']}" for f in fuentes])
 
-        # 5. Generar respuesta según el modo seleccionado (RAG o Search)
+        if es_meta_pregunta or es_cambio_tema:
+            historial_para_llm = [{"role": "user", "content": h["content"]} for h in historial if h["role"] == "user"][-4:]
+        else:
+            historial_para_llm = []
+
+        return {
+            "conversation": conversation,
+            "historial": historial,
+            "es_meta_pregunta": es_meta_pregunta,
+            "es_cambio_tema": es_cambio_tema,
+            "fragmentos_relevantes": fragmentos_relevantes,
+            "tiene_fragmentos_relevantes": tiene_fragmentos_relevantes,
+            "fuentes": fuentes,
+            "contexto": contexto,
+            "fuentes_str": fuentes_str,
+            "historial_para_llm": historial_para_llm,
+        }
+
+    def preguntar(
+        self,
+        pregunta: str,
+        db: Session,
+        conversation_id: Optional[int] = None,
+        mode: str = "rag"
+    ) -> Dict[str, Any]:
+        """
+        Orquesta el flujo síncrono RAG: recuperar/crear conversación, buscar contexto,
+        incorporar historial conversacional, generar respuesta (vía LLM o búsquedas locales)
+        y guardar mensajes en la BD.
+        """
+        prep = self._preparar_contexto_y_fuentes(pregunta, db, conversation_id)
+        conversation = prep["conversation"]
+        fuentes = prep["fuentes"]
+        tiene_fragmentos_relevantes = prep["tiene_fragmentos_relevantes"]
+        fragmentos_relevantes = prep["fragmentos_relevantes"]
+        historial = prep["historial"]
+        es_meta_pregunta = prep["es_meta_pregunta"]
+        contexto = prep["contexto"]
+        fuentes_str = prep["fuentes_str"]
+        historial_para_llm = prep["historial_para_llm"]
+
         if mode == "search":
             if not tiene_fragmentos_relevantes:
                 respuesta = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
@@ -481,20 +596,11 @@ class RAGService:
             else:
                 respuesta = self._formatear_respuesta_solo_embeddings(pregunta, fragmentos_relevantes)
         else:
-            # Modo RAG (con LLM)
-            # Si NO hay fragmentos relevantes Y NO hay historial de conversación NI es meta-pregunta,
-            # retornar el mensaje de falta de información.
             if not tiene_fragmentos_relevantes and not historial and not es_meta_pregunta:
                 respuesta = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
                 fuentes = []
             else:
                 try:
-                    # Solo enviar historial si es meta-pregunta o tema nuevo
-                    # Para seguimientos del mismo tema, NO enviar historial (evita confusión)
-                    if es_meta_pregunta or es_cambio_tema:
-                        historial_para_llm = [{"role": "user", "content": h["content"]} for h in historial if h["role"] == "user"][-4:]
-                    else:
-                        historial_para_llm = []
                     respuesta = self.llm_service.generar_respuesta(
                         pregunta=pregunta,
                         contexto=contexto if tiene_fragmentos_relevantes else "",
@@ -506,7 +612,7 @@ class RAGService:
                 except Exception as e:
                     respuesta = f"Error al generar la respuesta con el LLM: {str(e)}"
 
-        # 6. Guardar mensajes en la base de datos vinculados a conversation.id
+        # Guardar mensajes en la base de datos vinculados a conversation.id
         msg_user = Message(
             conversation_id=conversation.id,
             role="user",
@@ -526,6 +632,113 @@ class RAGService:
             "conversation_id": conversation.id
         }
 
+    def preguntar_stream(
+        self,
+        pregunta: str,
+        db: Optional[Session] = None,
+        conversation_id: Optional[int] = None,
+        mode: str = "rag"
+    ) -> Generator[str, None, None]:
+        """
+        Generador SSE para streaming de respuestas en tiempo real.
+        Emite eventos estructurados en formato 'data: <json>\n\n'.
+        """
+        from backend.database import SessionLocal
+
+        should_close = False
+        if db is None:
+            db = SessionLocal()
+            should_close = True
+
+        try:
+            prep = self._preparar_contexto_y_fuentes(pregunta, db, conversation_id)
+            conversation = prep["conversation"]
+            fuentes = prep["fuentes"]
+            tiene_relevantes = prep["tiene_fragmentos_relevantes"]
+            fragmentos_relevantes = prep["fragmentos_relevantes"]
+            historial = prep["historial"]
+            es_meta_pregunta = prep["es_meta_pregunta"]
+            contexto = prep["contexto"]
+            fuentes_str = prep["fuentes_str"]
+            historial_para_llm = prep["historial_para_llm"]
+
+            # 1. Evento de inicio con metadatos de conversación y fuentes
+            start_payload = {
+                "type": "start",
+                "conversation_id": conversation.id,
+                "sources": fuentes
+            }
+            yield f"data: {json.dumps(start_payload, ensure_ascii=False)}\n\n"
+
+            respuesta_acumulada = ""
+
+            if mode == "search":
+                if not tiene_relevantes:
+                    respuesta_acumulada = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
+                else:
+                    respuesta_acumulada = self._formatear_respuesta_solo_embeddings(pregunta, fragmentos_relevantes)
+
+                token_payload = {"type": "token", "content": respuesta_acumulada}
+                yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+
+            else:
+                # Modo RAG (con LLM)
+                if not tiene_relevantes and not historial and not es_meta_pregunta:
+                    respuesta_acumulada = f"No encontré información relevante en los documentos indexados para responder a: \"{pregunta}\"."
+                    token_payload = {"type": "token", "content": respuesta_acumulada}
+                    yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+                else:
+                    try:
+                        for token in self.llm_service.generar_respuesta_stream(
+                            pregunta=pregunta,
+                            contexto=contexto if tiene_relevantes else "",
+                            fuentes=fuentes_str if tiene_relevantes else None,
+                            historial=historial_para_llm
+                        ):
+                            respuesta_acumulada += token
+                            token_payload = {"type": "token", "content": token}
+                            yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+
+                        if not respuesta_acumulada.strip():
+                            respuesta_acumulada = "No fue posible generar una respuesta a partir del contexto."
+                            token_payload = {"type": "token", "content": respuesta_acumulada}
+                            yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+
+                    except Exception as e:
+                        err_msg = f"Error al generar la respuesta con el LLM: {str(e)}"
+                        respuesta_acumulada += f"\n{err_msg}" if respuesta_acumulada else err_msg
+                        token_payload = {"type": "token", "content": f"\n{err_msg}" if respuesta_acumulada != err_msg else err_msg}
+                        yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+
+            # 2. Persistir mensajes en base de datos al finalizar el stream
+            msg_user = Message(
+                conversation_id=conversation.id,
+                role="user",
+                content=pregunta
+            )
+            msg_assistant = Message(
+                conversation_id=conversation.id,
+                role="assistant",
+                content=respuesta_acumulada
+            )
+            db.add_all([msg_user, msg_assistant])
+            db.commit()
+
+            # 3. Evento final 'done'
+            done_payload = {
+                "type": "done",
+                "conversation_id": conversation.id,
+                "answer": respuesta_acumulada
+            }
+            yield f"data: {json.dumps(done_payload, ensure_ascii=False)}\n\n"
+
+        except Exception as e:
+            err_payload = {"type": "error", "error": str(e)}
+            yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
+        finally:
+            if should_close:
+                db.close()
+
     def _formatear_respuesta_solo_embeddings(self, pregunta: str, fragmentos: List[Dict[str, Any]]) -> str:
         if not fragmentos:
             return f"No se encontró información relevante en los documentos para responder a: \"{pregunta}\"."
@@ -537,9 +750,7 @@ class RAGService:
                 f"Te sugerimos reformular los términos de búsqueda o consultar directamente con el área de Recursos Humanos."
             )
 
-        lineas = [
-            "INFORMACIÓN RECUPERADA EN LA DOCUMENTACIÓN INTERNA:\n"
-        ]
+        bloques = []
 
         for frag in fragmentos[:2]:
             meta = frag.get("metadata", {})
@@ -547,17 +758,15 @@ class RAGService:
             pag = meta.get("page", 1)
             sec = meta.get("section", "")
 
-            ubicacion = f"Pág. {pag}" if pag else ""
-            if sec and sec != f"Página {pag}" and sec != "General":
-                ubicacion += f" • {sec}" if ubicacion else sec
-
-            # Extraer pasaje con fallback seguro
+            # Extraer pasaje con fallback seguro y saneamiento de formato
             pasaje = self._extraer_pasaje_clave(pregunta, frag["content"])
             if not pasaje or len(pasaje.strip()) < 20:
                 pasaje = frag["content"].strip()
+            pasaje = limpiar_texto_pasaje(pasaje)
 
-            lineas.append(f"**{doc}** ({ubicacion}):")
-            lineas.append(f"> \"{pasaje}\"\n")
+            cita = _formatear_cita(doc, pag, sec)
+            bloques.append(f"#### {cita}\n\n{pasaje}")
 
-        lineas.append("*Respuesta extraída directamente mediante búsqueda semántica local (sin LLM).*")
-        return "\n".join(lineas)
+        resp = "### Documentación Interna Consultada\n\n"
+        resp += "\n\n---\n\n".join(bloques)
+        return resp

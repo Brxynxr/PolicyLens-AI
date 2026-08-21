@@ -171,7 +171,8 @@ PolicyLens-AI/
 
 | Metodo | Ruta | Descripcion | Rol |
 |--------|------|-------------|-----|
-| POST | `/chat` | Enviar pregunta | Todos |
+| POST | `/chat` | Enviar pregunta (síncrono) | Todos |
+| POST | `/chat/stream` | Enviar pregunta con streaming en tiempo real (SSE) | Todos |
 | GET | `/chat/conversations` | Listar conversaciones | Todos |
 | GET | `/chat/conversations/{id}` | Obtener conversacion | Todos |
 | DELETE | `/chat/conversations/{id}` | Eliminar conversacion | Todos |
@@ -219,8 +220,12 @@ LLM_API_KEY=nvapi-...
 LLM_BASE_URL=https://integrate.api.nvidia.com/v1
 LLM_MODEL=meta/llama-3.1-8b-instruct
 
-# Embeddings (siempre local):
-EMBEDDING_MODEL=nvidia/nv-embedqa-e5-v5
+# Embeddings locales (sentence-transformers). bge-m3: ~2.3 GB de descarga inicial,
+# 1024 dimensiones. Si cambias el modelo, regenera el indice con:
+#   python -m backend.scripts.reindexar_todo
+# Si cambias el modelo, regenera el indice con:
+#   python -m backend.scripts.reindexar_todo
+EMBEDDING_MODEL_LOCAL=BAAI/bge-m3
 ```
 
 ## Credenciales por Defecto

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -20,7 +21,7 @@ rag_service = RAGService()
 @router.post("", response_model=ChatResponse)
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
     """
-    Envía una pregunta y recibe una respuesta basada en los documentos indexados.
+    Envía una pregunta y recibe una respuesta basada en los documentos indexados (modo síncrono).
     """
     if not request.question.strip():
         raise HTTPException(
@@ -47,6 +48,28 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         answer=resultado["answer"],
         sources=sources,
         conversation_id=resultado["conversation_id"]
+    )
+
+
+@router.post("/stream")
+def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
+    """
+    Envía una pregunta y recibe una respuesta en tiempo real (Server-Sent Events streaming).
+    """
+    if not request.question.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La pregunta no puede estar vacía."
+        )
+
+    return StreamingResponse(
+        rag_service.preguntar_stream(
+            pregunta=request.question,
+            db=db,
+            conversation_id=request.conversation_id,
+            mode=request.mode
+        ),
+        media_type="text/event-stream"
     )
 
 

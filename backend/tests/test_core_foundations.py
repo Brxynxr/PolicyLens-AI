@@ -13,6 +13,11 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+# Aislar ChromaDB ANTES de importar backend.main: los tests usan embeddings mock
+# de 384d y una consulta contra la coleccion productiva (1024d) dispararia
+# _reset_coleccion() por conflicto de dimensiones, destruyendo el indice real.
+os.environ["CHROMA_PATH"] = tempfile.mkdtemp(prefix="chroma_test_")
+
 from backend.database import Base, get_db
 from backend.models.document import Document
 from backend.models.conversation import Conversation, Message

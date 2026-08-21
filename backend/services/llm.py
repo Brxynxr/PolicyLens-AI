@@ -1,5 +1,6 @@
+import json
 import os
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Generator
 import httpx
 
 
@@ -35,6 +36,61 @@ REGLAS FUNDAMENTALES:
         historial: Optional[List[Dict[str, str]]] = None
     ) -> str:
         return self._generar_api(pregunta, contexto, fuentes, historial)
+
+    def generar_respuesta_stream(
+        self,
+        pregunta: str,
+        contexto: str,
+        fuentes: Optional[str] = None,
+        historial: Optional[List[Dict[str, str]]] = None
+    ) -> Generator[str, None, None]:
+        """
+        Generador que consume la API del LLM en modo streaming y emite cada fragmento (delta) de texto.
+        """
+        prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 1024,
+            "stream": True
+        }
+
+        with httpx.Client(timeout=60.0) as client:
+            with client.stream(
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith("data: "):
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk_data = json.loads(data_str)
+                            choices = chunk_data.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content")
+                                if content:
+                                    yield content
+                        except Exception:
+                            continue
 
     def _construir_prompt(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
         historial_str = ""
@@ -88,3 +144,4 @@ INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el
         if not choices:
             return "No se obtuvo respuesta del modelo LLM."
         return choices[0].get("message", {}).get("content", "") or "Respuesta vacía del modelo LLM."
+

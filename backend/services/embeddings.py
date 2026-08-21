@@ -1,98 +1,51 @@
 import os
 from typing import List
-import httpx
 
 
 class EmbeddingService:
     """
-    Servicio desacoplado para generar embeddings (estandarizado a 384 dimensiones).
-    Utiliza por defecto sentence-transformers local ('paraphrase-multilingual-MiniLM-L12-v2')
-    para búsquedas vectoriales consistentes en ChromaDB.
+    Servicio desacoplado para generar embeddings 100% locales via sentence-transformers.
+
+    Modelo configurable con EMBEDDING_MODEL_LOCAL (.env).
+    Por defecto BAAI/bge-m3 (1024 dimensiones, ventana de 8192 tokens).
+
+    Lazy loading: el modelo solo se instancia en la primera consulta.
+    NOTA: al cambiar de modelo hay que regenerar el indice con:
+        python -m backend.scripts.reindexar_todo
+    (vectores de modelos distintos son dimensional/semanticamente incompatibles)
     """
 
+    FALLBACK_MODEL = "BAAI/bge-m3"
+    FALLBACK_DIM = 1024
+
     def __init__(self):
-        self.base_url = os.getenv("LLM_BASE_URL", "https://integrate.api.nvidia.com/v1")
-        self.model = os.getenv("EMBEDDING_MODEL", "nvidia/nv-embedqa-e5-v5")
-        self.api_key = os.getenv("LLM_API_KEY", "")
+        self.model = os.getenv("EMBEDDING_MODEL_LOCAL", self.FALLBACK_MODEL)
         self._local_model = None
 
     def _get_local_model(self):
+        """Lazy loading: instancia SentenceTransformer solo en la primera consulta."""
         if self._local_model is None:
             from sentence_transformers import SentenceTransformer
-            self._local_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+            self._local_model = SentenceTransformer(self.model)
         return self._local_model
 
-    def generar_embedding(self, texto: str, local: bool = True) -> List[float]:
+    def generar_embedding(self, texto: str) -> List[float]:
         """
-        Genera un vector de embedding (384d por defecto).
+        Genera el vector de embedding de un texto.
         """
-        if local:
-            return self._generar_embedding_local(texto)
-        return self._generar_embedding_api(texto)
-
-    def generar_embeddings_lote(self, textos: List[str], local: bool = True) -> List[List[float]]:
-        """
-        Genera un lote de vectores de embedding (384d por defecto).
-        """
-        if local:
-            return self._generar_embeddings_lote_local(textos)
-        return self._generar_embeddings_lote_api(textos)
-
-    def _generar_embedding_local(self, texto: str) -> List[float]:
         try:
             model = self._get_local_model()
-            embedding = model.encode(texto)
-            return embedding.tolist()
+            return model.encode(texto).tolist()
         except Exception:
-            # Vector nulo de 384 dimensiones como respaldo de emergencia
-            return [0.0] * 384
+            # Vector nulo como respaldo de emergencia
+            return [0.0] * self.FALLBACK_DIM
 
-    def _generar_embeddings_lote_local(self, textos: List[str]) -> List[List[float]]:
+    def generar_embeddings_lote(self, textos: List[str]) -> List[List[float]]:
+        """
+        Genera un lote de vectores de embedding.
+        """
         try:
             model = self._get_local_model()
-            embeddings = model.encode(textos)
-            return [e.tolist() for e in embeddings]
+            return [e.tolist() for e in model.encode(textos)]
         except Exception:
-            return [[0.0] * 384 for _ in textos]
-
-    def _generar_embedding_api(self, texto: str) -> List[float]:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "input": texto,
-            "input_type": "query",
-            "encoding_format": "float"
-        }
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
-                f"{self.base_url}/embeddings",
-                headers=headers,
-                json=payload
-            )
-            response.raise_for_status()
-            data = response.json()
-        return data["data"][0]["embedding"]
-
-    def _generar_embeddings_lote_api(self, textos: List[str]) -> List[List[float]]:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "input": textos,
-            "input_type": "passage",
-            "encoding_format": "float"
-        }
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(
-                f"{self.base_url}/embeddings",
-                headers=headers,
-                json=payload
-            )
-            response.raise_for_status()
-            data = response.json()
-        return [item["embedding"] for item in data["data"]]
+            return [[0.0] * self.FALLBACK_DIM for _ in textos]

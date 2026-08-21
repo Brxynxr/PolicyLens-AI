@@ -35,70 +35,101 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-50 p-4">
-      <div className="w-full max-w-md animate-fade-in-up">
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gold-500 flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-md shadow-gold-500/20">
+    <div className="relative flex min-h-screen items-center justify-center bg-[#181E4B] overflow-hidden px-4 font-sans antialiased">
+      {/* Glows de fondo con los colores de marca */}
+      <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[#7C3AED] opacity-20 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#FF6B6B] opacity-15 blur-3xl pointer-events-none" />
+
+      {/* Sutil malla de fondo */}
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px] opacity-5 pointer-events-none" />
+
+      <div className="relative w-full max-w-md">
+        {/* Header / Branding */}
+        <div className="mb-8 text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-white font-extrabold text-xl shadow-lg shadow-[#7C3AED]/30 ring-4 ring-white/10 mb-3">
             RP
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">RiwiPolicylens</h1>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gold-600 mt-1">AI Platform</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">
+            Riwi<span className="text-[#7C3AED]">PolicyLens</span>
+          </h1>
+          <span className="mt-1 inline-block rounded-full bg-[#7C3AED]/20 px-3 py-0.5 text-xs font-semibold uppercase tracking-widest text-[#A78BFA]">
+            AI PLATFORM
+          </span>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl border border-brand-200 shadow-2xs p-8">
-          <h2 className="text-lg font-bold text-neutral-900 mb-1">Iniciar Sesion</h2>
-          <p className="text-xs text-neutral-400 font-medium mb-6">Ingresa tus credenciales para acceder al sistema</p>
+        <div className="rounded-3xl bg-white p-8 shadow-2xl shadow-black/40 ring-1 ring-black/5">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-slate-900">Iniciar Sesion</h2>
+            <p className="mt-1 text-sm text-slate-500">Ingresa tus credenciales para acceder al sistema</p>
+          </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Campo Correo */}
             <div>
-              <label htmlFor="email" className="block text-xs font-bold text-neutral-700 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                 Correo electronico
               </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@policylens.com"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
-              />
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@policylens.com"
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-medium text-slate-800 placeholder-slate-400 transition-all focus:border-[#7C3AED] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#7C3AED]/10"
+                />
+              </div>
             </div>
 
+            {/* Campo Contrasena */}
             <div>
-              <label htmlFor="password" className="block text-xs font-bold text-neutral-700 mb-1.5">
-                Contrasena
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Tu contrasena"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Contrasena
+                </label>
+              </div>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-11 text-sm font-medium text-slate-800 placeholder-slate-400 transition-all focus:border-[#7C3AED] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#7C3AED]/10"
+                />
+              </div>
             </div>
 
+            {/* Error Message */}
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-xs font-semibold flex items-center gap-2">
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <div className="p-4 rounded-xl bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 text-[#FF6B6B] text-sm font-semibold flex items-center gap-3 animate-fade-in-up">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span>{error}</span>
               </div>
             )}
 
+            {/* Boton Submit */}
             <button
               type="submit"
               disabled={loading || !email.trim() || !password.trim()}
               className={`
-                w-full py-3.5 rounded-xl font-bold text-sm transition-all shadow-md
+                w-full rounded-xl py-3.5 text-sm font-bold text-white shadow-lg transition-all
                 ${loading || !email.trim() || !password.trim()
-                  ? 'bg-neutral-300 text-white shadow-none cursor-not-allowed'
-                  : 'bg-gold-500 hover:bg-gold-600 text-white shadow-gold-500/20 hover:scale-[1.01] active:scale-95'}
+                  ? 'bg-slate-300 shadow-none cursor-not-allowed'
+                  : 'bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] shadow-[#7C3AED]/30 hover:opacity-95 hover:shadow-xl hover:shadow-[#7C3AED]/40 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-[#7C3AED]/30'}
               `}
             >
               {loading ? (
@@ -116,9 +147,9 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-neutral-400 font-medium mt-6">
-          Sistema de Navegador Inteligente de Politicas
+        {/* Footer de la pantalla */}
+        <p className="mt-8 text-center text-xs font-medium text-slate-400">
+          Sistema de Navegador Inteligente de Politicas &bull; Riwi 2026
         </p>
       </div>
     </div>
