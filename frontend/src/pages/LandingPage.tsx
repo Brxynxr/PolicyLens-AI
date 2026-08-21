@@ -2,95 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isAuthenticated } from '../utils/auth'
 
-interface StepInfo {
-  id: number
-  number: string
-  title: string
-  subtitle: string
-  description: string
-  highlight: string
-  iconType: 'document' | 'query' | 'neural' | 'verified'
-}
-
-const NEURAL_STEPS: StepInfo[] = [
-  {
-    id: 1,
-    number: '01',
-    title: 'Carga de Documentos',
-    subtitle: 'Ingesta de normativas corporativas',
-    description: 'Los administradores cargan políticas internas, manuales de RRHH o contratos legales en formatos PDF, Word o HTML. El sistema procesa los archivos y extrae su contenido de forma segura para dejarlo listo para consultas.',
-    highlight: 'Soporte multiformato: PDF, Word (DOCX) y HTML',
-    iconType: 'document'
-  },
-  {
-    id: 2,
-    number: '02',
-    title: 'Consulta del Colaborador',
-    subtitle: 'Preguntas en lenguaje natural',
-    description: 'Cualquier empleado puede escribir su duda directamente en el chat en su lenguaje cotidiano. No es necesario recordar términos técnicos ni saber en qué página específica se encuentra la cláusula.',
-    highlight: 'Búsqueda conversacional intuitiva y directa',
-    iconType: 'query'
-  },
-  {
-    id: 3,
-    number: '03',
-    title: 'Procesamiento Neuronal & RAG',
-    subtitle: 'Búsqueda semántica inteligente',
-    description: 'El motor de inteligencia artificial analiza la consulta y localiza en milisegundos los fragmentos más relevantes dentro de la base de conocimiento, cruzando significado semántico e intención de búsqueda.',
-    highlight: 'Recuperación vectorial rápida de alta precisión',
-    iconType: 'neural'
-  },
-  {
-    id: 4,
-    number: '04',
-    title: 'Respuesta Verificada con Fuentes',
-    subtitle: 'Información exacta y auditable',
-    description: 'El asistente genera una respuesta clara y concisa basada únicamente en la documentación oficial, mostrando siempre el documento y la página exacta de donde se obtuvo la información.',
-    highlight: 'Cero alucinaciones • 100% auditable con fuentes',
-    iconType: 'verified'
-  }
-]
-
 export default function LandingPage() {
   const [showSplash, setShowSplash] = useState(true)
-  const [activeStep, setActiveStep] = useState<number>(1)
   const isAuth = isAuthenticated()
 
   const handleEnterPlatform = () => {
     setShowSplash(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const currentStep = NEURAL_STEPS.find((s) => s.id === activeStep) || NEURAL_STEPS[0]
-
-  // Render vector icons for neural graph nodes
-  const renderStepIcon = (type: StepInfo['iconType'], className = 'w-6 h-6') => {
-    switch (type) {
-      case 'document':
-        return (
-          <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        )
-      case 'query':
-        return (
-          <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        )
-      case 'neural':
-        return (
-          <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        )
-      case 'verified':
-        return (
-          <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-        )
-    }
   }
 
   // Step 1: Clean, Minimalist Centered Splash Entry
@@ -191,7 +109,7 @@ export default function LandingPage() {
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-neutral-600">
             <a href="#inicio" className="hover:text-gold-600 transition-colors">Inicio</a>
-            <a href="#flujo" className="hover:text-gold-600 transition-colors">Flujo Neuronal</a>
+            <a href="#flujo" className="hover:text-gold-600 transition-colors">Cómo Funciona</a>
             <a href="#beneficios" className="hover:text-gold-600 transition-colors">Problema & Solución</a>
             <a href="#capacidades" className="hover:text-gold-600 transition-colors">Características</a>
           </nav>
@@ -214,7 +132,7 @@ export default function LandingPage() {
       {/* Main Content Sections */}
       <main className="flex-1">
         {/* 1. HERO SECTION */}
-        <section id="inicio" className="relative pt-12 pb-20 md:pt-20 md:pb-24 overflow-hidden">
+        <section id="inicio" className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
               {/* Left Column: Copywriting */}
@@ -248,7 +166,7 @@ export default function LandingPage() {
                     href="#flujo"
                     className="w-full sm:w-auto px-6 py-4 rounded-xl border border-brand-200 bg-white hover:bg-brand-100 text-neutral-700 font-bold text-sm shadow-2xs hover:border-gold-300 transition-all text-center"
                   >
-                    Ver Flujo Neuronal
+                    Ver cómo funciona
                   </a>
                 </div>
 
@@ -263,7 +181,7 @@ export default function LandingPage() {
                     <p className="text-2xs font-semibold text-neutral-400 uppercase tracking-wider">PDF, DOCX, HTML</p>
                   </div>
                   <div>
-                    <p className="text-lg font-black text-neutral-900">&lt; 1.8s</p>
+                    <p className="text-lg font-black text-neutral-900">&lt; 2s</p>
                     <p className="text-2xs font-semibold text-neutral-400 uppercase tracking-wider">Respuesta RAG</p>
                   </div>
                 </div>
@@ -336,276 +254,91 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 2. INTERACTIVE NEURAL-CYCLE FLOW (SPLIT VIEW COMPONENT) */}
-        <section id="flujo" className="py-20 bg-white border-y border-brand-200/70 relative">
+        {/* 2. SYSTEM FLOW (Step-by-Step Overview) */}
+        <section id="flujo" className="py-20 bg-white border-y border-brand-200/70">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            {/* Section Header */}
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
               <span className="text-xs font-extrabold uppercase tracking-widest text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-200">
-                Flujo Neuronal RAG
+                Arquitectura del Sistema
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight">
-                El Proceso de Consulta Paso a Paso
+                Flujo RAG en 3 Pasos Simples
               </h2>
               <p className="text-sm text-neutral-500 font-medium">
-                Haz clic en cada nodo del grafo para ver cómo funciona cada etapa del sistema.
+                Cómo transformamos documentos estáticos en un motor de respuestas inteligente y verificable.
               </p>
             </div>
 
-            {/* Split View Container */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-              {/* Left Column: Circular Neural-Network Graph (5 cols) */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center">
-                <div className="relative w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 flex items-center justify-center select-none">
-                  {/* SVG Neural Connections with Curved Paths & Travelling Data Particles */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 340 340">
-                    <defs>
-                      <linearGradient id="orbitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#b8860b" stopOpacity="0.4" />
-                        <stop offset="50%" stopColor="#dcc9ad" stopOpacity="0.2" />
-                        <stop offset="100%" stopColor="#b8860b" stopOpacity="0.4" />
-                      </linearGradient>
-
-                      {/* Filter for particle glow */}
-                      <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="2" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                      </filter>
-                    </defs>
-
-                    {/* Outer Neural Orbit Path */}
-                    <circle
-                      cx="170"
-                      cy="170"
-                      r="115"
-                      fill="none"
-                      stroke="url(#orbitGradient)"
-                      strokeWidth="1.5"
-                      strokeDasharray="6 6"
-                      className="animate-spin-slow"
-                    />
-
-                    {/* Curved Connection Paths to Satellite Nodes */}
-                    {/* Curve 1: Center (170,170) to Node 1 Top (170,55) */}
-                    <path
-                      id="curve-1"
-                      d="M 170 170 Q 145 110 170 55"
-                      fill="none"
-                      stroke={activeStep === 1 ? '#b8860b' : '#dcc9ad'}
-                      strokeWidth={activeStep === 1 ? '2.5' : '1.5'}
-                      strokeDasharray="4 4"
-                      strokeOpacity={activeStep === 1 ? '0.95' : '0.4'}
-                      className="transition-all duration-300"
-                    />
-
-                    {/* Curve 2: Center (170,170) to Node 2 Right (285,170) */}
-                    <path
-                      id="curve-2"
-                      d="M 170 170 Q 230 145 285 170"
-                      fill="none"
-                      stroke={activeStep === 2 ? '#b8860b' : '#dcc9ad'}
-                      strokeWidth={activeStep === 2 ? '2.5' : '1.5'}
-                      strokeDasharray="4 4"
-                      strokeOpacity={activeStep === 2 ? '0.95' : '0.4'}
-                      className="transition-all duration-300"
-                    />
-
-                    {/* Curve 3: Center (170,170) to Node 3 Bottom (170,285) */}
-                    <path
-                      id="curve-3"
-                      d="M 170 170 Q 195 230 170 285"
-                      fill="none"
-                      stroke={activeStep === 3 ? '#b8860b' : '#dcc9ad'}
-                      strokeWidth={activeStep === 3 ? '2.5' : '1.5'}
-                      strokeDasharray="4 4"
-                      strokeOpacity={activeStep === 3 ? '0.95' : '0.4'}
-                      className="transition-all duration-300"
-                    />
-
-                    {/* Curve 4: Center (170,170) to Node 4 Left (55,170) */}
-                    <path
-                      id="curve-4"
-                      d="M 170 170 Q 110 195 55 170"
-                      fill="none"
-                      stroke={activeStep === 4 ? '#b8860b' : '#dcc9ad'}
-                      strokeWidth={activeStep === 4 ? '2.5' : '1.5'}
-                      strokeDasharray="4 4"
-                      strokeOpacity={activeStep === 4 ? '0.95' : '0.4'}
-                      className="transition-all duration-300"
-                    />
-
-                    {/* Animated Data Particles travelling along the curves */}
-                    <circle r={activeStep === 1 ? '4' : '2.5'} fill={activeStep === 1 ? '#d4a017' : '#b08d55'} opacity={activeStep === 1 ? '1' : '0.4'} filter="url(#goldGlow)">
-                      <animateMotion dur="2.2s" repeatCount="indefinite">
-                        <mpath href="#curve-1" />
-                      </animateMotion>
-                    </circle>
-
-                    <circle r={activeStep === 2 ? '4' : '2.5'} fill={activeStep === 2 ? '#d4a017' : '#b08d55'} opacity={activeStep === 2 ? '1' : '0.4'} filter="url(#goldGlow)">
-                      <animateMotion dur="2.4s" repeatCount="indefinite">
-                        <mpath href="#curve-2" />
-                      </animateMotion>
-                    </circle>
-
-                    <circle r={activeStep === 3 ? '4' : '2.5'} fill={activeStep === 3 ? '#d4a017' : '#b08d55'} opacity={activeStep === 3 ? '1' : '0.4'} filter="url(#goldGlow)">
-                      <animateMotion dur="2.2s" repeatCount="indefinite">
-                        <mpath href="#curve-3" />
-                      </animateMotion>
-                    </circle>
-
-                    <circle r={activeStep === 4 ? '4' : '2.5'} fill={activeStep === 4 ? '#d4a017' : '#b08d55'} opacity={activeStep === 4 ? '1' : '0.4'} filter="url(#goldGlow)">
-                      <animateMotion dur="2.4s" repeatCount="indefinite">
-                        <mpath href="#curve-4" />
-                      </animateMotion>
-                    </circle>
-                  </svg>
-
-                  {/* Central Node: Clean "Sistema" Hub */}
-                  <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-neutral-900 via-neutral-900 to-brand-950 p-1 shadow-lg shadow-gold-500/10 flex items-center justify-center text-white border border-gold-500/30">
-                    <div className="flex flex-col items-center justify-center">
-                      <svg className="w-5 h-5 text-gold-400 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="2" width="20" height="8" rx="2" />
-                        <rect x="2" y="14" width="20" height="8" rx="2" />
-                        <line x1="6" y1="6" x2="6.01" y2="6" strokeLinecap="round" strokeWidth="3" />
-                        <line x1="6" y1="18" x2="6.01" y2="18" strokeLinecap="round" strokeWidth="3" />
-                      </svg>
-                      <span className="text-3xs uppercase font-extrabold text-neutral-200 tracking-wider">Sistema</span>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+              {/* Step 1 */}
+              <div className="bg-brand-50/50 border border-brand-200 rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-gold-300 transition-all duration-300 group">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="w-12 h-12 rounded-2xl bg-gold-100 border border-gold-200 text-gold-700 font-extrabold text-lg flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                      01
+                    </span>
+                    <span className="text-2xs font-bold uppercase tracking-wider text-neutral-400">Paso 1</span>
                   </div>
-
-                  {/* Satellite Node 1: TOP (270°) - Carga de Documentos */}
-                  <button
-                    onClick={() => setActiveStep(1)}
-                    className={`
-                      absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 z-20 group cursor-pointer focus:outline-hidden transition-all duration-300
-                      ${activeStep === 1 ? 'scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}
-                    `}
-                    title="Carga de Documentos"
-                    aria-label="Paso 1: Carga de Documentos"
-                  >
-                    <div className={`
-                      w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-md
-                      ${activeStep === 1 
-                        ? 'bg-gold-500 text-white ring-4 ring-gold-400/30 shadow-gold-500/30' 
-                        : 'bg-white text-neutral-700 border border-brand-200 hover:border-gold-300'}
-                    `}>
-                      {renderStepIcon('document', 'w-6 h-6')}
-                    </div>
-                  </button>
-
-                  {/* Satellite Node 2: RIGHT (0°) - Consulta del Usuario */}
-                  <button
-                    onClick={() => setActiveStep(2)}
-                    className={`
-                      absolute top-1/2 right-2 sm:right-3 -translate-y-1/2 z-20 group cursor-pointer focus:outline-hidden transition-all duration-300
-                      ${activeStep === 2 ? 'scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}
-                    `}
-                    title="Consulta del Colaborador"
-                    aria-label="Paso 2: Consulta del Colaborador"
-                  >
-                    <div className={`
-                      w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-md
-                      ${activeStep === 2 
-                        ? 'bg-gold-500 text-white ring-4 ring-gold-400/30 shadow-gold-500/30' 
-                        : 'bg-white text-neutral-700 border border-brand-200 hover:border-gold-300'}
-                    `}>
-                      {renderStepIcon('query', 'w-6 h-6')}
-                    </div>
-                  </button>
-
-                  {/* Satellite Node 3: BOTTOM (90°) - Procesamiento Neuronal & RAG */}
-                  <button
-                    onClick={() => setActiveStep(3)}
-                    className={`
-                      absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 group cursor-pointer focus:outline-hidden transition-all duration-300
-                      ${activeStep === 3 ? 'scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}
-                    `}
-                    title="Procesamiento Neuronal & RAG"
-                    aria-label="Paso 3: Procesamiento Neuronal & RAG"
-                  >
-                    <div className={`
-                      w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-md
-                      ${activeStep === 3 
-                        ? 'bg-gold-500 text-white ring-4 ring-gold-400/30 shadow-gold-500/30' 
-                        : 'bg-white text-neutral-700 border border-brand-200 hover:border-gold-300'}
-                    `}>
-                      {renderStepIcon('neural', 'w-6 h-6')}
-                    </div>
-                  </button>
-
-                  {/* Satellite Node 4: LEFT (180°) - Respuesta Verificada con Fuentes */}
-                  <button
-                    onClick={() => setActiveStep(4)}
-                    className={`
-                      absolute top-1/2 left-2 sm:left-3 -translate-y-1/2 z-20 group cursor-pointer focus:outline-hidden transition-all duration-300
-                      ${activeStep === 4 ? 'scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}
-                    `}
-                    title="Respuesta Verificada con Fuentes"
-                    aria-label="Paso 4: Respuesta Verificada con Fuentes"
-                  >
-                    <div className={`
-                      w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-md
-                      ${activeStep === 4 
-                        ? 'bg-gold-500 text-white ring-4 ring-gold-400/30 shadow-gold-500/30' 
-                        : 'bg-white text-neutral-700 border border-brand-200 hover:border-gold-300'}
-                    `}>
-                      {renderStepIcon('verified', 'w-6 h-6')}
-                    </div>
-                  </button>
+                  <h3 className="text-lg font-bold text-neutral-900 leading-tight">
+                    Ingesta & Consulta Documental
+                  </h3>
+                  <p className="text-xs text-neutral-600 leading-relaxed font-normal">
+                    Los administradores cargan políticas o manuales en formato <strong className="text-neutral-800">PDF, Word (DOCX) o HTML</strong>. Los empleados formulan preguntas en lenguaje natural sin requerir tecnicismos.
+                  </p>
                 </div>
-
-                {/* Step Selector Pills for Mobile & Easy Access */}
-                <div className="flex items-center gap-2 mt-6 bg-brand-100/60 p-1.5 rounded-2xl border border-brand-200/70">
-                  {NEURAL_STEPS.map((step) => (
-                    <button
-                      key={step.id}
-                      onClick={() => setActiveStep(step.id)}
-                      className={`
-                        px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
-                        ${activeStep === step.id 
-                          ? 'bg-gold-500 text-white shadow-sm shadow-gold-500/20' 
-                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-white/60'}
-                      `}
-                    >
-                      Paso {step.number}
-                    </button>
-                  ))}
+                <div className="mt-6 pt-4 border-t border-brand-200/60 flex items-center gap-2 text-2xs font-bold text-gold-700">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <span>Carga física y parsing estructurado</span>
                 </div>
               </div>
 
-              {/* Right Column: Clean, Airy & Simple Information Card (7 cols) */}
-              <div className="lg:col-span-7">
-                <div 
-                  key={currentStep.id} 
-                  className="bg-brand-50/60 border border-brand-200 rounded-3xl p-6 sm:p-8 md:p-10 shadow-xs relative overflow-hidden animate-fade-in-up"
-                >
-                  {/* Step Pill Header */}
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <span className="px-3 py-1 rounded-lg bg-gold-500 text-white font-extrabold text-xs shadow-sm shadow-gold-500/20">
-                      Paso {currentStep.number}
+              {/* Step 2 */}
+              <div className="bg-brand-50/50 border border-brand-200 rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-gold-300 transition-all duration-300 group">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="w-12 h-12 rounded-2xl bg-gold-500 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-gold-500/20 group-hover:scale-110 transition-transform">
+                      02
                     </span>
-                    <span className="text-xs font-bold text-gold-700">
-                      {currentStep.subtitle}
-                    </span>
+                    <span className="text-2xs font-bold uppercase tracking-wider text-neutral-400">Paso 2</span>
                   </div>
-
-                  {/* Concise Title */}
-                  <h3 className="text-xl sm:text-2xl font-black text-neutral-900 tracking-tight leading-tight">
-                    {currentStep.title}
+                  <h3 className="text-lg font-bold text-neutral-900 leading-tight">
+                    Indexación Vectorial & RAG
                   </h3>
-
-                  {/* Simple, Human-Friendly Description */}
-                  <p className="mt-4 text-sm sm:text-base text-neutral-600 leading-relaxed font-normal">
-                    {currentStep.description}
+                  <p className="text-xs text-neutral-600 leading-relaxed font-normal">
+                    El texto se fragmenta en <strong className="text-neutral-800">chunks semánticos con metadatos</strong> (página, sección, hash). Se generan embeddings y se indexan en <strong className="text-neutral-800">ChromaDB</strong> para recuperación por similitud de coseno y filtro léxico.
                   </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-brand-200/60 flex items-center gap-2 text-2xs font-bold text-gold-700">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  </svg>
+                  <span>Búsqueda semántica híbrida</span>
+                </div>
+              </div>
 
-                  {/* Clean Highlight Footer */}
-                  <div className="mt-8 pt-5 border-t border-brand-200/80 flex items-center gap-2.5 text-xs sm:text-sm font-bold text-neutral-800">
-                    <span className="w-5 h-5 rounded-full bg-gold-100 text-gold-700 flex items-center justify-center font-bold text-xs shrink-0">
-                      ✓
+              {/* Step 3 */}
+              <div className="bg-brand-50/50 border border-brand-200 rounded-2xl p-6 md:p-8 flex flex-col justify-between relative shadow-2xs hover:shadow-md hover:border-gold-300 transition-all duration-300 group">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="w-12 h-12 rounded-2xl bg-neutral-900 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-neutral-900/10 group-hover:scale-110 transition-transform">
+                      03
                     </span>
-                    <span>{currentStep.highlight}</span>
+                    <span className="text-2xs font-bold uppercase tracking-wider text-neutral-400">Paso 3</span>
                   </div>
+                  <h3 className="text-lg font-bold text-neutral-900 leading-tight">
+                    Respuesta Sintetizada con Fuentes
+                  </h3>
+                  <p className="text-xs text-neutral-600 leading-relaxed font-normal">
+                    El LLM formula la respuesta utilizando <strong className="text-neutral-800">única y exclusivamente los fragmentos recuperados</strong>. El usuario visualiza la respuesta acompañada de tarjetas desplegables con el fragmento exacto y número de página.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-brand-200/60 flex items-center gap-2 text-2xs font-bold text-gold-700">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Cero alucinaciones &bull; 100% auditable</span>
                 </div>
               </div>
             </div>
