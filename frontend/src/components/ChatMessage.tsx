@@ -1,6 +1,6 @@
 import type { Message, ChatSource } from '../types'
 import SourceCard from './SourceCard'
-import EyeOfHorus from './EyeOfHorus'
+import BrandIcon from './BrandIcon'
 
 interface ChatMessageProps {
   message: Message
@@ -35,8 +35,8 @@ export default function ChatMessage({ message, sources }: ChatMessageProps) {
             U
           </div>
         ) : (
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#FAF8F5] border border-[#E8E2D6] flex items-center justify-center shadow-xs">
-            <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-xs overflow-hidden">
+            <BrandIcon className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg" />
           </div>
         )}
       </div>

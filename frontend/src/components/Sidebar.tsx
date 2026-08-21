@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useChat } from '../context/ChatContext'
-import EyeOfHorus from './EyeOfHorus'
+import BrandIcon from './BrandIcon'
 
 interface SidebarProps {
   onClose?: () => void
@@ -38,11 +38,11 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <div className="flex flex-col h-full bg-[#F5F0E8] border-r border-[#E8E2D6] w-72 text-neutral-800 select-none">
-      {/* 1. Header: Eye of Horus logo + PolicyLens title + collapse toggle */}
+      {/* 1. Header: Brand logo + PolicyLens title + collapse toggle */}
       <div className="p-4 sm:p-5 border-b border-[#E8E2D6] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-xs">
-            <EyeOfHorus className="w-6 h-6" stroke="#9E7111" strokeWidth={2} />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-xs">
+            <BrandIcon className="w-8 h-8 rounded-lg shadow-sm" />
           </div>
           <div>
             <h1 className="font-extrabold text-base leading-tight tracking-tight text-neutral-900 flex items-center gap-1.5">

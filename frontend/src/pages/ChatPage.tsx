@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import ChatMessage from '../components/ChatMessage'
-import EyeOfHorus from '../components/EyeOfHorus'
+import BrandIcon from '../components/BrandIcon'
 
 export default function ChatPage() {
   const {
@@ -80,11 +80,11 @@ export default function ChatPage() {
           {!hasMessages ? (
             /* Initial State (Hero Welcome Screen - Gemini Style) */
             <div className="my-auto py-8 sm:py-12 flex flex-col items-center text-center animate-fade-in-up">
-              {/* Luxury Eye of Horus Badge */}
+              {/* Authentic PolicyLens Logo Badge */}
               <div className="relative mb-6">
                 <div className="absolute -inset-2 rounded-3xl bg-[#9E7111]/10 blur-xl pointer-events-none" />
-                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-lg shadow-gold-500/10">
-                  <EyeOfHorus className="w-10 h-10 sm:w-12 sm:h-12" stroke="#9E7111" strokeWidth={2} />
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-lg shadow-gold-500/10 p-2">
+                  <BrandIcon className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-xs" />
                 </div>
               </div>
 
@@ -140,8 +140,8 @@ export default function ChatPage() {
               {loading && (
                 <div className="flex gap-4 p-5 rounded-2xl bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-2xs relative overflow-hidden animate-fade-in-up">
                   <div className="shrink-0">
-                    <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E8E2D6] flex items-center justify-center">
-                      <EyeOfHorus className="w-5 h-5 animate-pulse" stroke="#9E7111" strokeWidth={2} />
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                      <BrandIcon className="w-9 h-9 rounded-lg" />
                     </div>
                   </div>
                   <div className="flex-1 space-y-3">

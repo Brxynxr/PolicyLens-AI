@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import EyeOfHorus from './EyeOfHorus'
+import BrandIcon from './BrandIcon'
 import { useChat } from '../context/ChatContext'
 
 export default function Layout() {
@@ -54,7 +54,7 @@ export default function Layout() {
               </svg>
             </button>
             <div className="flex items-center gap-2">
-              <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
+              <BrandIcon className="w-6 h-6 rounded-md shadow-xs" />
               <span className="font-extrabold text-base text-neutral-900 tracking-tight">PolicyLens AI</span>
             </div>
           </div>
@@ -90,7 +90,7 @@ export default function Layout() {
               </svg>
             </button>
             <div className="flex items-center gap-2">
-              <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
+              <BrandIcon className="w-5 h-5 rounded-md" />
               <span className="font-extrabold text-sm text-neutral-900 tracking-tight">PolicyLens AI</span>
             </div>
           </header>

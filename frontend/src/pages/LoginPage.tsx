@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
-import EyeOfHorus from '../components/EyeOfHorus'
+import BrandIcon from '../components/BrandIcon'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -40,8 +40,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md animate-fade-in-up">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="relative w-16 h-16 rounded-2xl bg-white border border-[#E8E2D6] flex items-center justify-center mx-auto mb-4 shadow-md shadow-gold-500/10">
-            <EyeOfHorus className="w-10 h-10" stroke="#9E7111" strokeWidth={2} />
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-gold-500/10">
+            <BrandIcon className="w-14 h-14 rounded-2xl shadow-sm" />
           </div>
           <h1 className="text-2xl font-extrabold text-neutral-900 tracking-tight">PolicyLens</h1>
           <p className="text-xs font-semibold uppercase tracking-wider text-[#9E7111] mt-1">AI Platform</p>
@@ -128,7 +128,7 @@ export default function LoginPage() {
             </svg>
             <span>Volver a la presentación</span>
           </button>
-          <p className="text-3xs text-neutral-400 font-medium">
+          <p className="text-2xs text-neutral-400 font-medium">
             Sistema de Navegador Inteligente de Políticas &bull; RAG
           </p>
         </div>

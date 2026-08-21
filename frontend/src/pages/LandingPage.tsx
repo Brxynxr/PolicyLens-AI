@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isAuthenticated } from '../utils/auth'
-import EyeOfHorus from '../components/EyeOfHorus'
+import BrandIcon from '../components/BrandIcon'
 
 export default function LandingPage() {
   const [showSplash, setShowSplash] = useState(true)
@@ -12,7 +12,7 @@ export default function LandingPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Step 1: Clean, Minimalist Centered Splash Entry (Eye of Horus Luxury Branding)
+  // Step 1: Clean, Minimalist Centered Splash Entry (Original Brand Vector Asset)
   if (showSplash) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-[#FAF8F5] via-[#FAF8F5] to-[#F5F0E8] relative overflow-hidden select-none p-6">
@@ -34,13 +34,11 @@ export default function LandingPage() {
           title="Entrar a PolicyLens AI"
           aria-label="Entrar a PolicyLens AI: Navegador Inteligente de Políticas y Contratos Internos"
         >
-          {/* Authentic Eye of Horus Luxury Vector Logo */}
+          {/* Authentic High-Resolution PolicyLens AI Icon */}
           <div className="relative mb-6">
             <div className="absolute -inset-4 rounded-3xl bg-[#9E7111]/15 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             
-            <div className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-3xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-xl shadow-gold-500/10 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-gold-500/20 group-hover:border-[#9E7111]/40">
-              <EyeOfHorus className="w-20 h-20 sm:w-22 sm:h-22 md:w-24 md:h-24" stroke="#9E7111" strokeWidth={2} />
-            </div>
+            <BrandIcon className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-3xl shadow-xl shadow-gold-500/20 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-gold-500/30" />
           </div>
 
           {/* Primary Title with highlighted AI */}
@@ -69,9 +67,7 @@ export default function LandingPage() {
             className="flex items-center gap-3 group text-left cursor-pointer focus:outline-hidden"
             title="Volver a la pantalla de entrada"
           >
-            <div className="w-9 h-9 rounded-xl bg-white border border-[#E8E2D6] flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <EyeOfHorus className="w-6 h-6" stroke="#9E7111" strokeWidth={2} />
-            </div>
+            <BrandIcon className="w-8 h-8 rounded-lg shadow-sm shadow-gold-500/20 group-hover:scale-105 transition-transform" />
             <div>
               <span className="font-extrabold text-base text-neutral-900 tracking-tight leading-none block">
                 PolicyLens
@@ -192,8 +188,8 @@ export default function LandingPage() {
 
                     {/* AI Response with Gold Bar */}
                     <div className="flex gap-3 items-start relative bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] rounded-2xl rounded-tl-xs p-4 shadow-2xs">
-                      <div className="w-7 h-7 rounded-lg bg-[#FAF8F5] border border-[#E8E2D6] flex items-center justify-center shrink-0">
-                        <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
+                        <BrandIcon className="w-7 h-7 rounded-md" />
                       </div>
                       <div className="flex-1 space-y-2.5 min-w-0">
                         <div className="flex items-center justify-between">
@@ -472,9 +468,7 @@ export default function LandingPage() {
       <footer className="bg-[#F5F0E8] border-t border-[#E8E2D6] py-8 text-neutral-500 text-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white border border-[#E8E2D6] flex items-center justify-center">
-              <EyeOfHorus className="w-4.5 h-4.5" stroke="#9E7111" strokeWidth={2} />
-            </div>
+            <BrandIcon className="w-6 h-6 rounded-md shadow-2xs" />
             <span className="font-bold text-neutral-800">PolicyLens AI</span>
             <span className="text-neutral-400">&bull; Proyecto Académico RAG</span>
           </div>
