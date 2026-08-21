@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './Sidebar'
 import BrandIcon from './BrandIcon'
 import { useChat } from '../context/ChatContext'
@@ -17,13 +18,19 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#FAF8F5] text-neutral-800 font-sans">
-      {/* 1. Mobile Sidebar Overlay */}
-      {isMobileSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-neutral-900/40 backdrop-blur-xs transition-opacity duration-300 md:hidden"
-          onClick={closeMobileSidebar}
-        />
-      )}
+      {/* 1. Mobile Sidebar Overlay with AnimatePresence */}
+      <AnimatePresence>
+        {isMobileSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="fixed inset-0 z-40 bg-neutral-900/40 backdrop-blur-xs md:hidden"
+            onClick={closeMobileSidebar}
+          />
+        )}
+      </AnimatePresence>
 
       {/* 2. Unified Collapsible Sidebar (Desktop & Mobile Drawer) */}
       <aside 
@@ -34,7 +41,9 @@ export default function Layout() {
           ${isSidebarCollapsed ? 'md:w-0 md:border-r-0 md:opacity-0 pointer-events-none md:pointer-events-none' : 'md:w-72 md:opacity-100'}
         `}
       >
-        <div className="w-72 h-full">
+        <div 
+          className={`w-72 h-full transition-opacity duration-200 ease-in-out ${isSidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}
+        >
           <Sidebar onClose={closeMobileSidebar} />
         </div>
       </aside>
@@ -62,7 +71,12 @@ export default function Layout() {
 
         {/* Floating Sidebar Toggle Button for Desktop when Collapsed in Chat */}
         {isChatPage && isSidebarCollapsed && (
-          <div className="hidden md:flex absolute top-3 left-4 z-30">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="hidden md:flex absolute top-3 left-4 z-30"
+          >
             <button
               onClick={toggleSidebarCollapse}
               className="p-2 rounded-xl bg-white/90 backdrop-blur-xs border border-[#E8E2D6] hover:border-[#9E7111]/40 text-neutral-700 hover:text-[#9E7111] shadow-xs hover:shadow-sm transition-all flex items-center justify-center cursor-pointer group"
@@ -73,12 +87,17 @@ export default function Layout() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
               </svg>
             </button>
-          </div>
+          </motion.div>
         )}
 
         {/* Desktop Header for non-chat pages when sidebar is collapsed */}
         {!isChatPage && isSidebarCollapsed && (
-          <header className="hidden md:flex items-center gap-3 px-6 py-3 border-b border-[#E8E2D6] bg-[#F5F0E8]/60 shrink-0">
+          <motion.header 
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="hidden md:flex items-center gap-3 px-6 py-3 border-b border-[#E8E2D6] bg-[#F5F0E8]/60 shrink-0"
+          >
             <button
               onClick={toggleSidebarCollapse}
               className="p-1.5 rounded-lg border border-[#E8E2D6] bg-white hover:bg-[#FAF8F5] text-neutral-600 hover:text-neutral-900 transition-all cursor-pointer"
@@ -93,7 +112,7 @@ export default function Layout() {
               <BrandIcon className="w-5 h-5 rounded-md" />
               <span className="font-extrabold text-sm text-neutral-900 tracking-tight">PolicyLens AI</span>
             </div>
-          </header>
+          </motion.header>
         )}
 
         {/* Dynamic Page Outlet */}
