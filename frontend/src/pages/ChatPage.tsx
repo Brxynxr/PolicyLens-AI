@@ -10,11 +10,8 @@ export default function ChatPage() {
     error,
     mode,
     activeSources,
-    isSidebarCollapsed,
-    toggleSidebarCollapse,
     setMode,
-    sendMessage,
-    handleNewChat
+    sendMessage
   } = useChat()
 
   const [inputMsg, setInputMsg] = useState('')
@@ -77,48 +74,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#FAF8F5] relative overflow-hidden">
-      {/* 1. Header Bar: Title, Sidebar Toggle, and Action Status */}
-      <div className="px-4 sm:px-6 py-3 border-b border-[#E8E2D6] bg-white/70 backdrop-blur-md flex items-center justify-between shrink-0 z-20">
-        <div className="flex items-center gap-3">
-          {/* Toggle Sidebar Button for Desktop */}
-          <button
-            onClick={toggleSidebarCollapse}
-            className="p-1.5 rounded-lg border border-[#E8E2D6] bg-white hover:bg-[#FAF8F5] text-neutral-600 hover:text-neutral-900 transition-all cursor-pointer"
-            title={isSidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
-            aria-label="Alternar barra lateral"
-          >
-            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
-            </svg>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <EyeOfHorus className="w-5 h-5" stroke="#9E7111" strokeWidth={2} />
-            <h2 className="font-extrabold text-sm sm:text-base text-neutral-900 tracking-tight">
-              {hasMessages ? `Consulta #${activeConv.id}` : 'PolicyLens AI'}
-            </h2>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {hasMessages && (
-            <button
-              onClick={handleNewChat}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E8E2D6] hover:border-[#9E7111]/40 text-[#9E7111] hover:bg-[#FAF8F5] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <span className="font-bold">+</span>
-              <span className="hidden sm:inline">Nueva Consulta</span>
-            </button>
-          )}
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FAF8F5] border border-[#E8E2D6] text-3xs font-extrabold text-[#9E7111] uppercase tracking-wider">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#9E7111] animate-pulse" />
-            <span>{mode === 'rag' ? 'RAG + LLM' : 'Solo Embeddings'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Main Conversation / Welcome Canvas */}
+      {/* Main Conversation / Welcome Canvas (Full Height) */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="max-w-3xl mx-auto h-full flex flex-col justify-between">
           {!hasMessages ? (
@@ -171,7 +127,7 @@ export default function ChatPage() {
             </div>
           ) : (
             /* Message Feed Flow */
-            <div className="space-y-4 pb-6">
+            <div className="space-y-4 pb-6 pt-2">
               {activeConv.messages.map((msg) => (
                 <ChatMessage 
                   key={msg.id} 
@@ -214,7 +170,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* 3. Floating Bottom Input Prompt Bar (Gemini Style) */}
+      {/* Floating Bottom Input Prompt Bar (Gemini Style) */}
       <div className="px-4 pb-4 pt-1 bg-gradient-to-t from-[#FAF8F5] via-[#FAF8F5]/90 to-transparent shrink-0 z-20">
         <div className="max-w-3xl mx-auto space-y-2">
           {/* Mode Switcher Pill Selector (Above input bar) */}
