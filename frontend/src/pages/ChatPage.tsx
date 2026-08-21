@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { useChat } from '../context/ChatContext'
 import ChatMessage from '../components/ChatMessage'
 import BrandIcon from '../components/BrandIcon'
@@ -136,22 +137,47 @@ export default function ChatPage() {
                 />
               ))}
 
-              {/* Loading Skeleton */}
+              {/* Animated Typing Indicator */}
               {loading && (
-                <div className="flex gap-4 p-5 rounded-2xl bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-2xs relative overflow-hidden animate-fade-in-up">
+                <motion.div 
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.28, ease: 'easeOut' }}
+                  className="flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-2xs relative w-full"
+                >
                   <div className="shrink-0">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center">
-                      <BrandIcon className="w-9 h-9 rounded-lg" />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-xs overflow-hidden">
+                      <BrandIcon className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg" />
                     </div>
                   </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="h-3.5 rounded-md w-1/4 shimmer-skeleton" />
-                    <div className="space-y-2">
-                      <div className="h-3 rounded-md w-full shimmer-skeleton" />
-                      <div className="h-3 rounded-md w-4/5 shimmer-skeleton" />
+                  <div className="flex-1 space-y-2 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs sm:text-sm text-neutral-900">PolicyLens AI</span>
+                      <span className="text-3xs font-extrabold uppercase text-[#9E7111] bg-[#FAF8F5] px-1.5 py-0.2 rounded border border-[#E8E2D6]">
+                        Consultando documentos...
+                      </span>
+                    </div>
+
+                    {/* 3 Animated Pulsing / Staggered Dots */}
+                    <div className="flex items-center gap-1.5 py-1">
+                      <motion.span
+                        className="w-2 h-2 rounded-full bg-[#9E7111]"
+                        animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.15, 0.8] }}
+                        transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut', delay: 0 }}
+                      />
+                      <motion.span
+                        className="w-2 h-2 rounded-full bg-[#9E7111]"
+                        animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.15, 0.8] }}
+                        transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
+                      />
+                      <motion.span
+                        className="w-2 h-2 rounded-full bg-[#9E7111]"
+                        animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.15, 0.8] }}
+                        transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+                      />
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               <div ref={chatEndRef} />

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import type { Message, ChatSource } from '../types'
 import SourceCard from './SourceCard'
 import BrandIcon from './BrandIcon'
@@ -30,9 +31,12 @@ export default function ChatMessage({ message, sources }: ChatMessageProps) {
   }
 
   return (
-    <div 
+    <motion.div 
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
       className={`
-        flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl transition-all duration-200 animate-fade-in-up
+        flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl
         ${isUser 
           ? 'flex-row-reverse bg-[#F5F0E8] border border-[#E8E2D6] ml-auto max-w-[88%] sm:max-w-[80%]' 
           : 'bg-white border border-[#E8E2D6] border-l-4 border-l-[#9E7111] shadow-2xs relative w-full'}
@@ -92,6 +96,6 @@ export default function ChatMessage({ message, sources }: ChatMessageProps) {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
