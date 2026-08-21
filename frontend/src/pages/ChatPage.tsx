@@ -286,11 +286,6 @@ export default function ChatPage() {
               )}
             </button>
           </form>
-
-          {/* Fine Bottom Disclaimer */}
-          <p className="text-center text-3xs text-neutral-400 font-medium">
-            PolicyLens AI puede cometer errores. Verifica la información citada con los documentos originales.
-          </p>
         </div>
       </div>
     </div>
