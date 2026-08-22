@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
     question: str
     conversation_id: Optional[int] = None
     mode: str = "rag"
+    user_id: Optional[int] = None
 
 
 class SourceItem(BaseModel):

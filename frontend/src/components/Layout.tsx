@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const location = useLocation()
+  const isFullBleed = location.pathname === '/chat'
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
   const closeSidebar = () => setIsSidebarOpen(false)
@@ -33,7 +35,7 @@ export default function Layout() {
         {/* Mobile Header */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-brand-800 bg-brand-800 md:hidden">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-white font-bold shadow-md shadow-purple-600/30">
+            <div className="w-8 h-8 rounded-lg bg-purple-700 flex items-center justify-center text-white font-bold shadow-md shadow-purple-700/30">
               RP
             </div>
             <span className="font-bold text-lg text-white tracking-tight">RiwiPolicylens</span>
@@ -50,8 +52,10 @@ export default function Layout() {
         </header>
 
         {/* Dynamic Page Outlet */}
-        <main className="flex-1 overflow-y-auto focus:outline-hidden p-6 md:p-8">
-          <div className="max-w-6xl mx-auto h-full">
+        <main className={`flex-1 min-h-0 focus:outline-hidden ${
+          isFullBleed ? 'overflow-hidden' : 'overflow-y-auto p-6 md:p-8'
+        }`}>
+          <div className={isFullBleed ? 'h-full' : 'max-w-6xl mx-auto h-full'}>
             <Outlet />
           </div>
         </main>

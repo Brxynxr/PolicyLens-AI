@@ -408,7 +408,8 @@ class RAGService:
         self,
         pregunta: str,
         db: Session,
-        conversation_id: Optional[int] = None
+        conversation_id: Optional[int] = None,
+        user_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Recupera el historial conversacional, ejecuta la búsqueda semántica e híbrida
@@ -420,7 +421,7 @@ class RAGService:
             conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
 
         if not conversation:
-            conversation = Conversation()
+            conversation = Conversation(user_id=user_id)
             db.add(conversation)
             db.commit()
             db.refresh(conversation)
@@ -571,14 +572,15 @@ class RAGService:
         pregunta: str,
         db: Session,
         conversation_id: Optional[int] = None,
-        mode: str = "rag"
+        mode: str = "rag",
+        user_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Orquesta el flujo síncrono RAG: recuperar/crear conversación, buscar contexto,
         incorporar historial conversacional, generar respuesta (vía LLM o búsquedas locales)
         y guardar mensajes en la BD.
         """
-        prep = self._preparar_contexto_y_fuentes(pregunta, db, conversation_id)
+        prep = self._preparar_contexto_y_fuentes(pregunta, db, conversation_id, user_id=user_id)
         conversation = prep["conversation"]
         fuentes = prep["fuentes"]
         tiene_fragmentos_relevantes = prep["tiene_fragmentos_relevantes"]
@@ -637,7 +639,8 @@ class RAGService:
         pregunta: str,
         db: Optional[Session] = None,
         conversation_id: Optional[int] = None,
-        mode: str = "rag"
+        mode: str = "rag",
+        user_id: Optional[int] = None
     ) -> Generator[str, None, None]:
         """
         Generador SSE para streaming de respuestas en tiempo real.
@@ -651,7 +654,7 @@ class RAGService:
             should_close = True
 
         try:
-            prep = self._preparar_contexto_y_fuentes(pregunta, db, conversation_id)
+            prep = self._preparar_contexto_y_fuentes(pregunta, db, conversation_id, user_id=user_id)
             conversation = prep["conversation"]
             fuentes = prep["fuentes"]
             tiene_relevantes = prep["tiene_fragmentos_relevantes"]

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ChatSource } from '../types'
+import { limpiarEncoding } from '../utils/fixEncoding'
 
 interface SourceCardProps {
   source: ChatSource
@@ -85,7 +86,7 @@ export default function SourceCard({ source }: SourceCardProps) {
             Fragmento de Referencia:
           </p>
           <div className="text-xs text-neutral-600 leading-relaxed font-sans bg-white p-3 rounded-lg border border-purple-100 italic shadow-sm">
-            "{source.content}"
+            "{limpiarEncoding(source.content)}"
           </div>
         </div>
       </div>

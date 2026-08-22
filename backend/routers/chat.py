@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,8 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
             pregunta=request.question,
             db=db,
             conversation_id=request.conversation_id,
-            mode=request.mode
+            mode=request.mode,
+            user_id=request.user_id
         )
     except Exception as e:
         raise HTTPException(
@@ -67,18 +69,22 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
             pregunta=request.question,
             db=db,
             conversation_id=request.conversation_id,
-            mode=request.mode
+            mode=request.mode,
+            user_id=request.user_id
         ),
         media_type="text/event-stream"
     )
 
 
 @router.get("/conversations", response_model=ConversationListResponse)
-def get_conversations(db: Session = Depends(get_db)):
+def get_conversations(user_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
     """
-    Lista todas las conversaciones registradas.
+    Lista las conversaciones. Si se envía user_id, filtra solo las de ese usuario.
     """
-    convs = db.query(Conversation).order_by(Conversation.id.desc()).all()
+    query = db.query(Conversation)
+    if user_id is not None:
+        query = query.filter(Conversation.user_id == user_id)
+    convs = query.order_by(Conversation.id.desc()).all()
 
     conversations = []
     for conv in convs:
@@ -92,12 +98,17 @@ def get_conversations(db: Session = Depends(get_db)):
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
-def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
+def get_conversation(
+    conversation_id: int,
+    user_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
     """
     Obtiene una conversación específica con todos sus mensajes.
+    Si se envía user_id, solo la devuelve si pertenece a ese usuario.
     """
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
-    if not conv:
+    if not conv or (user_id is not None and conv.user_id not in (None, user_id)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Conversación con ID {conversation_id} no encontrada."
@@ -106,12 +117,17 @@ def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/conversations/{conversation_id}")
-def delete_conversation(conversation_id: int, db: Session = Depends(get_db)):
+def delete_conversation(
+    conversation_id: int,
+    user_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
     """
     Elimina una conversación y todos sus mensajes.
+    Si se envía user_id, solo elimina si pertenece a ese usuario.
     """
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
-    if not conv:
+    if not conv or (user_id is not None and conv.user_id not in (None, user_id)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Conversación con ID {conversation_id} no encontrada."

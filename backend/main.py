@@ -28,6 +28,20 @@ async def lifespan(app: FastAPI):
     """
     Base.metadata.create_all(bind=engine)
 
+    # Migracion ligera: agregar columna user_id a conversations si no existe
+    # (create_all no altera tablas ya creadas en SQLite)
+    from sqlalchemy import text, inspect as sa_inspect
+    with engine.connect() as conn:
+        columnas = [c["name"] for c in sa_inspect(engine).get_columns("conversations")]
+        if "user_id" not in columnas:
+            conn.execute(text("ALTER TABLE conversations ADD COLUMN user_id INTEGER"))
+            conn.commit()
+        # Chats antiguos sin dueño se asignan al primer admin para no perderlos
+        admin = conn.execute(text("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1")).scalar()
+        if admin is not None:
+            conn.execute(text("UPDATE conversations SET user_id=:uid WHERE user_id IS NULL"), {"uid": admin})
+            conn.commit()
+
     db = SessionLocal()
     admin = db.query(User).filter(User.role == "admin").first()
     if not admin:

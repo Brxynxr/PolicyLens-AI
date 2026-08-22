@@ -1,3 +1,5 @@
+import { limpiarEncoding } from '../utils/fixEncoding'
+
 interface FormattedTextProps {
   content: string
   isStreaming?: boolean
@@ -19,9 +21,10 @@ function renderInlineBold(text: string) {
 }
 
 export default function FormattedText({ content, isStreaming, className = '' }: FormattedTextProps) {
-  if (!content) return null
+  const textoLimpio = limpiarEncoding(content)
+  if (!textoLimpio) return null
 
-  const blocks = content.split(/\n\s*\n/)
+  const blocks = textoLimpio.split(/\n\s*\n/)
 
   return (
     <div className={`space-y-4 text-sm md:text-base text-neutral-700 leading-relaxed font-normal ${className}`}>

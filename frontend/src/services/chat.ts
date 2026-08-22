@@ -1,4 +1,4 @@
-import type { Conversation, Message, ChatResponse, ChatSource } from '../types'
+﻿import type { Conversation, Message, ChatResponse, ChatSource } from '../types'
 import api from './api'
 
 export interface StreamCallbacks {
@@ -8,14 +8,19 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void
 }
 
+const getUserId = (): number | undefined => {
+  const id = localStorage.getItem('user_id')
+  return id ? Number(id) : undefined
+}
+
 export async function listarConversaciones(): Promise<Conversation[]> {
-  const data = await api.get('/chat/conversations') as any
+  const data = await api.get(`/chat/conversations?user_id=${getUserId() ?? ''}`) as any
   return data.conversations || []
 }
 
 export async function obtenerConversacion(id: number): Promise<Conversation | null> {
   try {
-    const data = await api.get(`/chat/conversations/${id}`) as any
+    const data = await api.get(`/chat/conversations/${id}?user_id=${getUserId() ?? ''}`) as any
     return data
   } catch {
     return null
@@ -30,6 +35,7 @@ export async function enviarPregunta(
   const res = await api.post('/chat', {
     question: pregunta,
     conversation_id: conversationId && conversationId > 0 ? conversationId : undefined,
+    user_id: getUserId(),
     mode: mode
   }) as any
 
@@ -74,6 +80,7 @@ export async function enviarPreguntaStream(
     body: JSON.stringify({
       question: pregunta,
       conversation_id: conversationId && conversationId > 0 ? conversationId : undefined,
+    user_id: getUserId(),
       mode: mode,
     }),
   })
@@ -175,6 +182,6 @@ export async function enviarPreguntaStream(
 }
 
 export async function eliminarConversacion(id: number): Promise<void> {
-  await api.delete(`/chat/conversations/${id}`)
+  await api.delete(`/chat/conversations/${id}?user_id=${getUserId() ?? ''}`)
 }
 
