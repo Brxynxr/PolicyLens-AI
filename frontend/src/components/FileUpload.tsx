@@ -137,8 +137,8 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
           className={`
             border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-56
             ${dragActive 
-              ? 'border-gold-500 bg-gold-50/10' 
-              : 'border-brand-300 hover:border-gold-400 hover:bg-brand-50/10'}
+              ? 'border-[#7C3AED] bg-[#7C3AED]/10' 
+                  : 'bg-brand-350 hover:border-purple-400 hover:bg-brand-50/10'}
           `}
         >
           <input
@@ -150,7 +150,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
             className="hidden"
           />
 
-          <div className="w-12 h-12 rounded-xl bg-brand-100 text-gold-600 flex items-center justify-center mb-4 shadow-sm">
+          <div className="w-12 h-12 rounded-xl bg-brand-100 text-[#7C3AED] flex items-center justify-center mb-4 shadow-sm">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -175,7 +175,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
             {!uploading && (
               <button
                 onClick={triggerInput}
-                className="text-2xs font-bold text-gold-600 hover:text-gold-700 transition-colors cursor-pointer"
+                className="text-2xs font-bold text-[#7C3AED] hover:text-[#6D28D9] transition-colors cursor-pointer"
               >
                 + Agregar más
               </button>
@@ -197,11 +197,11 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
                 key={`${file.name}-${idx}`} 
                 className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
                   uploading && currentFileIndex === idx 
-                    ? 'border-gold-400 bg-gold-50/20' 
+                    ? 'border-[#7C3AED] bg-[#7C3AED]/20' 
                     : 'border-brand-200 bg-brand-50/30'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-gold-100 text-gold-600 border border-gold-200 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20 flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
@@ -239,7 +239,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
               </div>
               <div className="w-full bg-neutral-200 rounded-full h-1.5 overflow-hidden">
                 <div 
-                  className="bg-gold-500 h-1.5 rounded-full transition-all duration-150"
+                  className="bg-[#7C3AED] h-1.5 rounded-full transition-all duration-150"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -270,7 +270,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
           
           <button
             onClick={handleUploadSubmit}
-            className="flex-1 px-4 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm shadow-md shadow-gold-500/20 hover:scale-[1.01] transition-all cursor-pointer"
+            className="flex-1 px-4 py-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-bold text-sm shadow-md shadow-[#7C3AED]/20 hover:scale-[1.01] transition-all cursor-pointer"
           >
             Cargar e Indexar ({files.length})
           </button>

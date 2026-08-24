@@ -93,7 +93,7 @@ export default function UserModal({ user, onSave, onClose }: UserModalProps) {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Nombre completo"
-              className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
+              className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
             />
           </div>
 
@@ -106,7 +106,7 @@ export default function UserModal({ user, onSave, onClose }: UserModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="correo@ejemplo.com"
-              className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
+              className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
             />
           </div>
 
@@ -120,7 +120,7 @@ export default function UserModal({ user, onSave, onClose }: UserModalProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Contrasena inicial"
-                className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
+                className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all font-medium text-neutral-800 placeholder:text-neutral-300"
               />
             </div>
           )}
@@ -132,7 +132,7 @@ export default function UserModal({ user, onSave, onClose }: UserModalProps) {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 transition-all font-medium text-neutral-800"
+              className="w-full px-4 py-3 rounded-xl border border-brand-200 bg-white text-sm focus:outline-hidden focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all font-medium text-neutral-800"
             >
               <option value="empleado">Empleado</option>
               <option value="admin">Administrador</option>
@@ -164,7 +164,7 @@ export default function UserModal({ user, onSave, onClose }: UserModalProps) {
                 flex-1 py-3 rounded-xl font-bold text-sm transition-all shadow-md
                 ${saving
                   ? 'bg-neutral-300 text-white shadow-none cursor-not-allowed'
-                  : 'bg-gold-500 hover:bg-gold-600 text-white shadow-gold-500/20 hover:scale-[1.01] active:scale-95'}
+                  : 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-[#7C3AED]/20 hover:scale-[1.01] active:scale-95'}
               `}
             >
               {saving ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Crear Usuario'}
