@@ -42,3 +42,16 @@ class SyncSummaryResponse(BaseModel):
     errors: List[str]
     total_processed: int
     details: List[SyncFileDetail] = []
+
+
+class ReindexFileDetail(BaseModel):
+    archivo: str
+    chunks: int
+
+
+class ReindexSummaryResponse(BaseModel):
+    chunks_antes: int
+    registros_eliminados_sqlite: int
+    archivos_procesados: List[ReindexFileDetail]
+    total_chunks: int
+    errores: List[str]

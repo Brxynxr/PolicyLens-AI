@@ -36,7 +36,7 @@ Un centro de consultas interno donde cualquier colaborador puede hacer preguntas
 
 **IA:**
 - LLM: NVIDIA NIM API (meta/llama-3.1-8b-instruct)
-- Embeddings: sentence-transformers local (paraphrase-multilingual-MiniLM-L12-v2)
+- Embeddings: sentence-transformers local (BAAI/bge-m3)
 
 ## Instalacion
 
@@ -59,7 +59,7 @@ cp .env.example .env
 # Ejecutar backend (desde la raiz del proyecto)
 uvicorn backend.main:app --reload
 
-# NOTA: El primer arranque descarga el modelo de embeddings (~120 MB). Es normal.
+# NOTA: El primer arranque descarga el modelo de embeddings (~2.3 GB). Es normal.
 # Las tablas y el usuario admin se crean automaticamente al iniciar el servidor.
 
 # INDEXAR LOS DOCUMENTOS (paso obligatorio la primera vez):
@@ -236,8 +236,4 @@ EMBEDDING_MODEL_LOCAL=BAAI/bge-m3
 | Password | admin123 |
 | Rol | admin |
 
-## Desarrollado por
 
-- Integrante 1 — Backend & Core Engineer
-- Integrante 2 — AI & Data Pipeline Architect
-- Integrante 3 — Frontend & Integration Lead

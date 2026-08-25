@@ -38,3 +38,8 @@ export async function subirDocumento(file: File, onProgress?: (percent: number) 
 export async function eliminarDocumento(id: number): Promise<void> {
   await api.delete(`/documents/${id}`)
 }
+
+export async function reindexarDocumentos(): Promise<any> {
+  const res = await api.post('/sync/reindex')
+  return res
+}

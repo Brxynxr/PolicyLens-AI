@@ -31,9 +31,9 @@ export default function ChatPage() {
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   const suggestions = [
-    { icon: '🌴', text: 'Vacaciones y días libres', subtext: 'Días acumulados y solicitudes', query: '¿Cuántos días de vacaciones me corresponden?' },
-    { icon: '🏥', text: 'Incapacidades y licencias', subtext: 'Protocolos de salud y permisos', query: '¿En cuántos días debo cargar una incapacidad médica?' },
-    { icon: '💻', text: 'Horarios y Teletrabajo', subtext: 'Esquemas híbridos e ingreso', query: '¿Cuál es la política sobre el teletrabajo híbrido?' },
+    { icon: '/img/vacaciones-y-dias-libres.png', text: 'Vacaciones y días libres', subtext: 'Días acumulados y solicitudes', query: '¿Cuántos días de vacaciones me corresponden?' },
+    { icon: '/img/incapacidades-y-licencias.png', text: 'Incapacidades y licencias', subtext: 'Protocolos de salud y permisos', query: '¿En cuántos días debo cargar una incapacidad médica?' },
+    { icon: '/img/horario-y-teletrabajo.png', text: 'Horarios y Teletrabajo', subtext: 'Esquemas híbridos e ingreso', query: '¿Cuál es la política sobre el teletrabajo híbrido?' },
   ]
 
   const loadConversations = async (selectId?: number) => {
@@ -344,45 +344,59 @@ export default function ChatPage() {
       <main className="flex-1 min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
         
         {/* Topbar */}
-        <header className="h-16 border-b border-slate-300 bg-white px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Modo de consulta:</span>
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-300">
-              <button
-                onClick={() => setMode('rag')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  mode === 'rag'
-                    ? 'bg-[#7C3AED] text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 font-medium'
-                }`}
-              >
-                Respuesta Generada (IA)
-              </button>
-              <button
-                onClick={() => setMode('search')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  mode === 'search'
-                    ? 'bg-[#7C3AED] text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 font-medium'
-                }`}
-              >
-                Solo Documento
-              </button>
+        <header className="border-b border-slate-300 bg-white px-6 py-3 flex flex-col gap-2 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Modo de consulta:</span>
+              <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-300">
+                <button
+                  onClick={() => setMode('rag')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    mode === 'rag'
+                      ? 'bg-[#7C3AED] text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900 font-medium'
+                  }`}
+                >
+                  Respuesta Generada (IA)
+                </button>
+                <button
+                  onClick={() => setMode('search')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    mode === 'search'
+                      ? 'bg-[#7C3AED] text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900 font-medium'
+                  }`}
+                >
+                  Solo Documento
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-full">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Base de datos al día
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-full">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Base de datos al día
-          </div>
+          {mode === 'rag' ? (
+            <p className="text-[11px] text-slate-400 font-medium">
+              Modo IA: el asistente interpreta tu pregunta, busca en los documentos y redacta una respuesta clara con fuentes.
+            </p>
+          ) : (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+              <svg className="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-[11px] text-amber-700 font-medium">
+                Modo rápido: búsqueda semántica directa. Para preguntas complejas o con negaciones, usa el modo IA.
+              </p>
+            </div>
+          )}
         </header>
 
         {/* Contenido / Mensajes o Empty State */}
         <div className="flex-1 overflow-y-auto">
           {!activeConv || activeConv.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full text-center">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-white flex items-center justify-center shadow-lg shadow-[#7C3AED]/30 mb-4">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              </div>
+               <img src="/img/buscar.png" alt="Buscar" className="w-16 h-16 object-contain mb-4 mx-auto" />
               <h2 className="text-xl font-extrabold text-slate-900">¿Qué deseas consultar hoy?</h2>
               <p className="text-xs text-slate-500 mt-1 max-w-md">Realiza preguntas sobre las políticas, contratos y reglamentos internos de la empresa.</p>
               
@@ -393,7 +407,7 @@ export default function ChatPage() {
                     onClick={() => setInputMsg(sug.query)}
                     className="p-4 rounded-2xl bg-white border border-slate-300 hover:border-[#7C3AED] hover:shadow-md transition-all text-left group cursor-pointer"
                   >
-                    <span className="text-lg">{sug.icon}</span>
+                    <img src={sug.icon} alt={sug.text} className="w-8 h-8 object-contain shrink-0" />
                     <p className="text-xs font-bold text-slate-800 mt-2 group-hover:text-[#7C3AED]">{sug.text}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{sug.subtext}</p>
                   </button>

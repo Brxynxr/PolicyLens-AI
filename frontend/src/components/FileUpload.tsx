@@ -1,9 +1,8 @@
 import { useState, useRef } from 'react'
 import { subirDocumento } from '../services/documents'
-import type { Document } from '../types'
 
 interface FileUploadProps {
-  onUploadSuccess: (doc: Document) => void
+  onUploadSuccess: () => void
   onClose: () => void
 }
 
@@ -91,15 +90,15 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
       for (let i = 0; i < files.length; i++) {
         setCurrentFileIndex(i)
         const currentFile = files[i]
-        const doc = await subirDocumento(currentFile, (filePercent) => {
+        await subirDocumento(currentFile, (filePercent) => {
           const fileWeight = 100 / files.length
           const totalProgress = Math.round(i * fileWeight + (filePercent / 100) * fileWeight)
           setProgress(totalProgress)
         })
-        onUploadSuccess(doc)
       }
       setFiles([])
       setProgress(0)
+      onUploadSuccess()
     } catch (err: any) {
       setError(err.message || 'Error al procesar la carga de archivos.')
     } finally {

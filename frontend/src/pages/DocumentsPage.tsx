@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { listarDocumentos, eliminarDocumento } from '../services/documents'
+import { listarDocumentos, eliminarDocumento, reindexarDocumentos } from '../services/documents'
 import type { Document } from '../types'
 import FileUpload from '../components/FileUpload'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -12,6 +12,8 @@ export default function DocumentsPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [docToDelete, setDocToDelete] = useState<Document | null>(null)
+  const [reindexing, setReindexing] = useState(false)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   const fetchDocs = async () => {
     try {
@@ -41,6 +43,21 @@ export default function DocumentsPage() {
       setError('Error al eliminar el documento.')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleReindex = async () => {
+    try {
+      setReindexing(true)
+      setError(null)
+      setSuccessMsg(null)
+      const res = await reindexarDocumentos()
+      await fetchDocs()
+      setSuccessMsg(`Reindexación completa: ${res.total_chunks} chunks generados en total.`)
+    } catch {
+      setError('Error al reindexar los documentos.')
+    } finally {
+      setReindexing(false)
     }
   }
 
@@ -123,8 +140,22 @@ export default function DocumentsPage() {
         
         <div className="flex items-center gap-3">
           <button
+            onClick={handleReindex}
+            disabled={reindexing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-all border border-amber-200 disabled:opacity-50 cursor-pointer"
+          >
+            {reindexing ? (
+              <div className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin"></div>
+            ) : (
+              <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+            {reindexing ? 'Reindexando...' : 'Re-Indexar Todo'}
+          </button>
+          <button
             onClick={() => fetchDocs()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all border border-slate-200"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all border border-slate-200 cursor-pointer"
           >
             <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -133,7 +164,7 @@ export default function DocumentsPage() {
           </button>
           <button
             onClick={() => setIsUploadOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold shadow-md shadow-[#7C3AED]/20 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold shadow-md shadow-[#7C3AED]/20 transition-all cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -149,6 +180,15 @@ export default function DocumentsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <span>{error}</span>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{successMsg}</span>
         </div>
       )}
 
@@ -212,7 +252,7 @@ export default function DocumentsPage() {
             <h3 className="font-bold text-slate-900 text-sm">Archivos Indexados en el Conocimiento RAG</h3>
             <p className="text-xs text-slate-400">Directorio de origen: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">./documents</code></p>
           </div>
-          <span className="text-xs font-semibold text-slate-500">Chunker: 1800 chars / 360 overlap</span>
+          <span className="text-xs font-semibold text-slate-500">Chunker: 800 chars / 160 overlap</span>
         </div>
 
         {loading ? (

@@ -78,7 +78,7 @@ export default function SourceCard({ source }: SourceCardProps) {
       <div 
         className={`
           overflow-hidden transition-all duration-300 ease-in-out border-neutral-100
-          ${isOpen ? 'max-h-60 border-t bg-purple-50/30' : 'max-h-0'}
+          ${isOpen ? 'max-h-96 overflow-y-auto border-t bg-purple-50/30' : 'max-h-0'}
         `}
       >
         <div className="p-4">
