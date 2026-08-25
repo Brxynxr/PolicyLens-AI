@@ -31,9 +31,9 @@ export default function ChatPage() {
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   const suggestions = [
-    { icon: '🌴', text: 'Vacaciones y días libres', subtext: 'Días acumulados y solicitudes', query: '¿Cuántos días de vacaciones me corresponden?' },
-    { icon: '🏥', text: 'Incapacidades y licencias', subtext: 'Protocolos de salud y permisos', query: '¿En cuántos días debo cargar una incapacidad médica?' },
-    { icon: '💻', text: 'Horarios y Teletrabajo', subtext: 'Esquemas híbridos e ingreso', query: '¿Cuál es la política sobre el teletrabajo híbrido?' },
+    { icon: '/img/vacaciones-y-dias-libres.png', text: 'Vacaciones y días libres', subtext: 'Días acumulados y solicitudes', query: '¿Cuántos días de vacaciones me corresponden?' },
+    { icon: '/img/incapacidades-y-licencias.png', text: 'Incapacidades y licencias', subtext: 'Protocolos de salud y permisos', query: '¿En cuántos días debo cargar una incapacidad médica?' },
+    { icon: '/img/horario-y-teletrabajo.png', text: 'Horarios y Teletrabajo', subtext: 'Esquemas híbridos e ingreso', query: '¿Cuál es la política sobre el teletrabajo híbrido?' },
   ]
 
   const loadConversations = async (selectId?: number) => {
@@ -380,9 +380,7 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto">
           {!activeConv || activeConv.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full text-center">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-white flex items-center justify-center shadow-lg shadow-[#7C3AED]/30 mb-4">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              </div>
+              <img src="/img/buscar.png" alt="Buscar" className="w-16 h-16 object-contain mb-4" />
               <h2 className="text-xl font-extrabold text-slate-900">¿Qué deseas consultar hoy?</h2>
               <p className="text-xs text-slate-500 mt-1 max-w-md">Realiza preguntas sobre las políticas, contratos y reglamentos internos de la empresa.</p>
               
@@ -393,7 +391,7 @@ export default function ChatPage() {
                     onClick={() => setInputMsg(sug.query)}
                     className="p-4 rounded-2xl bg-white border border-slate-300 hover:border-[#7C3AED] hover:shadow-md transition-all text-left group cursor-pointer"
                   >
-                    <span className="text-lg">{sug.icon}</span>
+                    <img src={sug.icon} alt={sug.text} className="w-8 h-8 object-contain" />
                     <p className="text-xs font-bold text-slate-800 mt-2 group-hover:text-[#7C3AED]">{sug.text}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{sug.subtext}</p>
                   </button>
