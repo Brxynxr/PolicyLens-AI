@@ -59,7 +59,7 @@ cp .env.example .env
 # Ejecutar backend (desde la raiz del proyecto)
 uvicorn backend.main:app --reload
 
-# NOTA: El primer arranque descarga el modelo de embeddings (~120 MB). Es normal.
+# NOTA: El primer arranque descarga el modelo de embeddings (~2.3 GB). Es normal.
 # Las tablas y el usuario admin se crean automaticamente al iniciar el servidor.
 
 # INDEXAR LOS DOCUMENTOS (paso obligatorio la primera vez):
