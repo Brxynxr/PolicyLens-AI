@@ -169,7 +169,8 @@ class RAGService:
         self.llm_service = LLMService()
         
         self.cross_encoder = None
-        if CROSS_ENCODER_DISPONIBLE:
+        use_ce = os.getenv("USE_CROSS_ENCODER", "false").lower() == "true"
+        if CROSS_ENCODER_DISPONIBLE and use_ce:
             try:
                 self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", max_length=512)
             except Exception:

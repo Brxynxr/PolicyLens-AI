@@ -32,20 +32,15 @@ class EmbeddingService:
     def generar_embedding(self, texto: str) -> List[float]:
         """
         Genera el vector de embedding de un texto.
+        Si falla, propaga la excepcion para evitar indexar vectores nulos (silenciosos).
         """
-        try:
-            model = self._get_local_model()
-            return model.encode(texto).tolist()
-        except Exception:
-            # Vector nulo como respaldo de emergencia
-            return [0.0] * self.FALLBACK_DIM
+        model = self._get_local_model()
+        return model.encode(texto).tolist()
 
     def generar_embeddings_lote(self, textos: List[str]) -> List[List[float]]:
         """
         Genera un lote de vectores de embedding.
+        Si falla, propaga la excepcion para evitar indexar vectores nulos (silenciosos).
         """
-        try:
-            model = self._get_local_model()
-            return [e.tolist() for e in model.encode(textos)]
-        except Exception:
-            return [[0.0] * self.FALLBACK_DIM for _ in textos]
+        model = self._get_local_model()
+        return [e.tolist() for e in model.encode(textos)]
