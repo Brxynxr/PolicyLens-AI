@@ -236,8 +236,4 @@ EMBEDDING_MODEL_LOCAL=BAAI/bge-m3
 | Password | admin123 |
 | Rol | admin |
 
-## Desarrollado por
 
-- Integrante 1 — Backend & Core Engineer
-- Integrante 2 — AI & Data Pipeline Architect
-- Integrante 3 — Frontend & Integration Lead
