@@ -48,4 +48,4 @@
 
 - `UMBRAL_COS_RELEVANTE` actual: **42.0**
 - `UMBRAL_HIBRIDO_RELEVANTE` actual: **45.0**
-- `UMBRAL_COS_FALLBACK` actual (Top-1 sin filtros previos): **38.0**
+- `UMBRAL_COS_FALLBACK` actual (Top-1 sin filtros previos): **40.5**

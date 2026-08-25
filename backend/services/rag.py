@@ -29,6 +29,12 @@ try:
 except ImportError:
     BM25_DISPONIBLE = False
 
+try:
+    from sentence_transformers import CrossEncoder
+    CROSS_ENCODER_DISPONIBLE = True
+except ImportError:
+    CROSS_ENCODER_DISPONIBLE = False
+
 
 def _sin_tildes(texto: str) -> str:
     """
@@ -74,11 +80,11 @@ TEMAS_CONOCIDOS = {
 # --- Parametros de puntuacion y filtrado RAG ---
 # Calibrados con DIAGNOSTICO_BGE_M3.md: los relevantes observados van de cos ~44 a ~69
 # y el ruido out-of-domain se queda en ~27-31, por lo que el corte en 42 aisla el ruido.
-PESO_COSENO = 0.85              # Peso semantico dentro del score hibrido
-PESO_BM25 = 0.15                # Peso lexico dentro del score hibrido
+PESO_COSENO = 0.65              # Peso semantico dentro del score hibrido
+PESO_BM25 = 0.35                # Peso lexico dentro del score hibrido
 UMBRAL_COS_RELEVANTE = 42.0     # Coseno minimo para considerar relevante un fragmento
 UMBRAL_HIBRIDO_RELEVANTE = 45.0  # Score hibrido minimo para considerar relevante un fragmento
-UMBRAL_COS_FALLBACK = 38.0      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
+UMBRAL_COS_FALLBACK = 40.5      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
 METADATA_BOOST = 15.0           # Bonus por coincidencia pregunta <-> nombre de archivo
 
 # Sinonimos de dominio: termino de la pregunta -> tokens esperables en el nombre
@@ -161,6 +167,13 @@ class RAGService:
 
         self.embedding_service = EmbeddingService()
         self.llm_service = LLMService()
+        
+        self.cross_encoder = None
+        if CROSS_ENCODER_DISPONIBLE:
+            try:
+                self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", max_length=512)
+            except Exception:
+                self.cross_encoder = None
 
         # Ruta configurable via CHROMA_PATH; por defecto el almacén productivo
         # del proyecto. Los tests fijan esta variable para aislar su colección.
@@ -505,6 +518,22 @@ class RAGService:
             frag["bm25_score"] = bm25_norm
             frag["metadata_boost"] = boost_doc
             frag["hybrid_score"] = round((cos_sim * PESO_COSENO) + (bm25_norm * PESO_BM25) + boost_doc, 1)
+
+        # Re-ranking con Cross-Encoder si está disponible
+        if self.cross_encoder and fragmentos:
+            try:
+                pairs = [(query_busqueda, frag["content"]) for frag in fragmentos]
+                ce_scores = self.cross_encoder.predict(pairs)
+                max_ce = max(ce_scores) if len(ce_scores) > 0 else 1.0
+                min_ce = min(ce_scores) if len(ce_scores) > 0 else 0.0
+                ce_range = (max_ce - min_ce) if (max_ce - min_ce) > 0 else 1.0
+
+                for i, frag in enumerate(fragmentos):
+                    norm_ce = ((ce_scores[i] - min_ce) / ce_range) * 100.0
+                    frag["cross_encoder_score"] = round(norm_ce, 1)
+                    frag["hybrid_score"] = round((frag["hybrid_score"] * 0.7) + (norm_ce * 0.3), 1)
+            except Exception:
+                pass
 
         fragmentos.sort(key=lambda x: x.get("hybrid_score", 0), reverse=True)
 

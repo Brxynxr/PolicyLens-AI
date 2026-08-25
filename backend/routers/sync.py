@@ -8,7 +8,7 @@ from backend.models.document import Document
 from backend.utils.hashing import calcular_hash
 from backend.services.documents import procesar_documento
 from backend.services.rag import RAGService
-from backend.schemas.document import SyncSummaryResponse, SyncFileDetail
+from backend.schemas.document import SyncSummaryResponse, SyncFileDetail, ReindexSummaryResponse
 
 router = APIRouter()
 
@@ -133,4 +133,23 @@ def sync_documents(db: Session = Depends(get_db)):
         errors=errors,
         total_processed=total_processed,
         details=details
+    )
+
+
+@router.post("/reindex", response_model=ReindexSummaryResponse, status_code=status.HTTP_200_OK)
+def reindex_all(db: Session = Depends(get_db)):
+    """
+    Reindexacion completa del sistema RAG:
+    - Vacia la coleccion de ChromaDB.
+    - Borra todos los registros de SQLite.
+    - Reprocesa cada archivo con la configuracion vigente de chunking/embeddings.
+    """
+    from backend.scripts.reindexar_todo import reindexar_todo
+    resultado = reindexar_todo()
+    return ReindexSummaryResponse(
+        chunks_antes=resultado.get("chunks_antes", 0),
+        registros_eliminados_sqlite=resultado.get("registros_eliminados_sqlite", 0),
+        archivos_procesados=resultado.get("archivos_procesados", []),
+        total_chunks=resultado.get("total_chunks", 0),
+        errores=resultado.get("errores", [])
     )
