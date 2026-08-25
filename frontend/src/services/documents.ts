@@ -40,6 +40,6 @@ export async function eliminarDocumento(id: number): Promise<void> {
 }
 
 export async function reindexarDocumentos(): Promise<any> {
-  const res = await api.post('/sync/reindex')
+  const res = await api.post('/documents/reindex')
   return res
 }
