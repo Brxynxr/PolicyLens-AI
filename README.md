@@ -36,7 +36,7 @@ Un centro de consultas interno donde cualquier colaborador puede hacer preguntas
 
 **IA:**
 - LLM: NVIDIA NIM API (meta/llama-3.1-8b-instruct)
-- Embeddings: sentence-transformers local (paraphrase-multilingual-MiniLM-L12-v2)
+- Embeddings: sentence-transformers local (BAAI/bge-m3)
 
 ## Instalacion
 
