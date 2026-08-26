@@ -35,7 +35,7 @@ Un centro de consultas interno donde cualquier colaborador puede hacer preguntas
 - React Router
 
 **IA:**
-- LLM: NVIDIA NIM API (meta/llama-3.1-8b-instruct)
+- LLM: Compatible con NVIDIA NIM API o modelos locales vía Ollama (ej. `qwen2.5:3b`, `llama3.2:1b-instruct-q8_0`, `llama3.1:8b`)
 - Embeddings: sentence-transformers local (BAAI/bge-m3)
 
 ## Instalacion
@@ -215,10 +215,10 @@ El archivo `.env` debe contener:
 DATABASE_URL=sqlite:///./sql_app.db
 CORS_ORIGINS=http://localhost:5173
 
-# LLM via API (NVIDIA NIM):
-LLM_API_KEY=nvapi-...
-LLM_BASE_URL=https://integrate.api.nvidia.com/v1
-LLM_MODEL=meta/llama-3.1-8b-instruct
+# LLM (NVIDIA NIM o Local via Ollama):
+LLM_API_KEY=ollama
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=qwen2.5:3b
 
 # Embeddings locales (sentence-transformers). bge-m3: ~2.3 GB de descarga inicial,
 # 1024 dimensiones. Si cambias el modelo, regenera el indice con:
