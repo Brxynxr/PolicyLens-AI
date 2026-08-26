@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { isAdmin } from '../App'
+import { isAdmin } from '../utils/auth'
 import { listarDocumentos } from '../services/documents'
 
 interface SidebarProps {

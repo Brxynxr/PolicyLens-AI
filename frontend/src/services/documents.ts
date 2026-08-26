@@ -43,3 +43,12 @@ export async function reindexarDocumentos(): Promise<any> {
   const res = await api.post('/documents/reindex')
   return res
 }
+
+export async function obtenerEstadisticasDocumentos(): Promise<import('../types').DocumentStatsResponse | null> {
+  try {
+    const res = await api.get<import('../types').DocumentStatsResponse>('/documents/stats')
+    return res as any
+  } catch {
+    return null
+  }
+}

@@ -8,7 +8,7 @@ import {
 import type { Conversation, Message, ChatSource } from '../types'
 import ConfirmDialog from '../components/ConfirmDialog'
 import FormattedText from '../components/FormattedText'
-import SourceCard from '../components/SourceCard'
+import SourceCard, { groupSources } from '../components/SourceCard'
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -31,9 +31,24 @@ export default function ChatPage() {
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   const suggestions = [
-    { icon: '/img/vacaciones-y-dias-libres.png', text: 'Vacaciones y días libres', subtext: 'Días acumulados y solicitudes', query: '¿Cuántos días de vacaciones me corresponden?' },
-    { icon: '/img/incapacidades-y-licencias.png', text: 'Incapacidades y licencias', subtext: 'Protocolos de salud y permisos', query: '¿En cuántos días debo cargar una incapacidad médica?' },
-    { icon: '/img/horario-y-teletrabajo.png', text: 'Horarios y Teletrabajo', subtext: 'Esquemas híbridos e ingreso', query: '¿Cuál es la política sobre el teletrabajo híbrido?' },
+    { 
+      icon: '/img/deberes.png', 
+      text: 'Deberes y Obligaciones', 
+      subtext: 'Responsabilidades y compromisos', 
+      query: '¿Cuáles son los deberes generales y obligaciones de los trabajadores?' 
+    },
+    { 
+      icon: '/img/prohibido.png', 
+      text: 'Prohibiciones y Faltas', 
+      subtext: 'Régimen disciplinario y ausencias', 
+      query: '¿Qué prohibiciones tienen los trabajadores y qué pasa si falto al trabajo?' 
+    },
+    { 
+      icon: '/img/proteger.png', 
+      text: 'Seguridad Digital', 
+      subtext: 'Políticas de contraseñas y privacidad', 
+      query: '¿Cuáles son las políticas para el uso seguro de contraseñas y privacidad de la información?' 
+    },
   ]
 
   const loadConversations = async (selectId?: number) => {
@@ -412,20 +427,26 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto">
           {!activeConv || activeConv.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full text-center">
-               <img src="/img/buscar.png" alt="Buscar" className="w-16 h-16 object-contain mb-4 mx-auto" />
+              <img src="/img/buscar.png" alt="Buscar" className="w-16 h-16 object-contain mb-4 mx-auto drop-shadow-sm" />
               <h2 className="text-xl font-extrabold text-slate-900">¿Qué deseas consultar hoy?</h2>
               <p className="text-xs text-slate-500 mt-1 max-w-md">Realiza preguntas sobre las políticas, contratos y reglamentos internos de la empresa.</p>
               
-              <div className="grid grid-cols-3 gap-3 w-full mt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 w-full mt-8">
                 {suggestions.map((sug, idx) => (
                   <button
                     key={idx}
                     onClick={() => setInputMsg(sug.query)}
-                    className="p-4 rounded-2xl bg-white border border-slate-300 hover:border-[#7C3AED] hover:shadow-md transition-all text-left group cursor-pointer"
+                    className="p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-[#7C3AED] hover:shadow-lg hover:shadow-purple-500/10 transition-all text-left group cursor-pointer flex flex-col justify-between"
                   >
-                    <img src={sug.icon} alt={sug.text} className="w-8 h-8 object-contain shrink-0" />
-                    <p className="text-xs font-bold text-slate-800 mt-2 group-hover:text-[#7C3AED]">{sug.text}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{sug.subtext}</p>
+                    <img 
+                      src={sug.icon} 
+                      alt={sug.text} 
+                      className="w-9 h-9 object-contain shrink-0 group-hover:scale-110 transition-transform duration-200" 
+                    />
+                    <div className="mt-3">
+                      <p className="text-xs font-bold text-slate-800 group-hover:text-[#7C3AED] transition-colors">{sug.text}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{sug.subtext}</p>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -466,19 +487,26 @@ export default function ChatPage() {
                           <span className="text-xs italic text-slate-400">Generando respuesta...</span>
                         </div>
                       )}
-                      {!isUser && activeSources[msg.id] && activeSources[msg.id].length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-slate-200 space-y-3">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#7C3AED] uppercase tracking-wider">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            <span>Fuentes utilizadas ({activeSources[msg.id].length}):</span>
+                      {!isUser && activeSources[msg.id] && activeSources[msg.id].length > 0 && (() => {
+                        const grouped = groupSources(activeSources[msg.id])
+                        return (
+                          <div className="mt-4 pt-3 border-t border-slate-200 space-y-3">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-[#7C3AED] uppercase tracking-wider">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span>
+                                Documento{grouped.length > 1 ? 's' : ''} fuente ({grouped.length}) &bull; {activeSources[msg.id].length} fragmento{activeSources[msg.id].length > 1 ? 's' : ''}:
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2.5">
+                              {grouped.map((grp, gIdx) => (
+                                <SourceCard key={gIdx} groupedSource={grp} />
+                              ))}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {activeSources[msg.id].map((src, sIdx) => (
-                              <SourceCard key={sIdx} source={src} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        )
+                      })()}
                     </div>
                     {isUser && (
                       <div className="h-9 w-9 rounded-xl bg-[#7C3AED] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-md">

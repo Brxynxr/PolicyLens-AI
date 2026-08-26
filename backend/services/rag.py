@@ -45,9 +45,11 @@ def _sin_tildes(texto: str) -> str:
     return sin_tildes(texto)
 
 
-def _tokenizar(texto: str) -> List[str]:
+def _tokenizar(texto: Optional[str]) -> List[str]:
     """Tokeniza en minusculas y sin diacriticos para scoring lexico (BM25)."""
-    return re.findall(r'\b\w+\b', _sin_tildes(texto.lower()))
+    if not texto:
+        return []
+    return re.findall(r'\b\w+\b', _sin_tildes(str(texto).lower()))
 
 
 # Stopwords en espanol: conectores y palabras gramaticales sin valor semantico.
@@ -78,14 +80,15 @@ TEMAS_CONOCIDOS = {
 }
 
 # --- Parametros de puntuacion y filtrado RAG ---
-# Calibrados con DIAGNOSTICO_BGE_M3.md: los relevantes observados van de cos ~44 a ~69
-# y el ruido out-of-domain se queda en ~27-31, por lo que el corte en 42 aisla el ruido.
+# Calibrados para intfloat/multilingual-e5-small (384D):
+# En E5, los fragmentos relevantes in-domain van de cos ~83% a ~94%,
+# y el ruido out-of-domain se ubica en <78%. El corte en 80.5% / 81.5% aisla el ruido perfectamente.
 PESO_COSENO = 0.65              # Peso semantico dentro del score hibrido
 PESO_BM25 = 0.35                # Peso lexico dentro del score hibrido
-UMBRAL_COS_RELEVANTE = 42.0     # Coseno minimo para considerar relevante un fragmento
-UMBRAL_HIBRIDO_RELEVANTE = 45.0  # Score hibrido minimo para considerar relevante un fragmento
-UMBRAL_COS_FALLBACK = 40.5      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
-METADATA_BOOST = 15.0           # Bonus por coincidencia pregunta <-> nombre de archivo
+UMBRAL_COS_RELEVANTE = 80.5     # Coseno minimo para considerar relevante un fragmento
+UMBRAL_HIBRIDO_RELEVANTE = 81.5  # Score hibrido minimo para considerar relevante un fragmento
+UMBRAL_COS_FALLBACK = 78.5      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
+METADATA_BOOST = 10.0           # Bonus por coincidencia pregunta <-> nombre de archivo
 
 # Sinonimos de dominio: termino de la pregunta -> tokens esperables en el nombre
 # del documento. Permite que 'incapacidad' o 'bono' apunten a los archivos
@@ -144,6 +147,16 @@ CALIFICADORES_BOOST = {
 }
 
 
+def _es_tabla_de_contenido(texto: str) -> bool:
+    if not texto:
+        return False
+    if len(re.findall(r'\.{4,}', texto)) >= 2:
+        return True
+    if ('tabla de contenido' in texto.lower() or 'índice' in texto.lower()) and len(re.findall(r'\.{2,}', texto)) >= 2:
+        return True
+    return False
+
+
 class RAGService:
     """
     Servicio de orquestacion RAG (Retrieval-Augmented Generation).
@@ -199,6 +212,40 @@ class RAGService:
             name="documents",
             metadata={"hnsw:space": "cosine"}
         )
+
+    @staticmethod
+    def _es_pregunta_dependiente(pregunta: str, historial: List[Dict[str, str]]) -> bool:
+        """
+        Determina en <1ms si una pregunta es elíptica o dependiente del contexto anterior.
+        """
+        if not historial:
+            return False
+        p_clean = _sin_tildes(pregunta.lower().strip())
+        tokens = re.findall(r'\b\w+\b', p_clean)
+        if not tokens:
+            return False
+
+        # Si es ultra-corta (<= 4 palabras) cuando ya hay conversación previa (ej. "¿por qué?", "¿y cuánto?")
+        if len(tokens) <= 4:
+            return True
+
+        # Marcadores explícitos de continuidad o referencia anafórica
+        marcadores = [
+            "pero", "y si", "en ese caso", "tampoco", "ademas", "asimismo",
+            "sobre eso", "sobre ello", "respecto a eso", "respecto a ello",
+            "cuales son esas", "cuales son esos", "a que se refiere", "como asi",
+            "y para mi", "y en mi caso", "en dicho caso", "en esa situacion",
+            "y si no", "si no estoy", "si no es", "si no son", "y que sanciones",
+            "y cuales son", "y que pasa con", "y con respecto", "y en cuanto a"
+        ]
+        if any(m in p_clean for m in marcadores):
+            return True
+
+        # Inicia con conectores o pronombres interrogativos dependientes
+        if tokens[0] in {"pero", "entonces", "ademas", "tampoco", "asimismo"}:
+            return True
+
+        return False
 
     @staticmethod
     def _detectar_temas(texto: str) -> set:
@@ -440,62 +487,39 @@ class RAGService:
             db.commit()
             db.refresh(conversation)
 
-        # 2. Cargar historial previo de la conversación (solo preguntas del usuario)
+        # 2. Cargar historial previo de la conversación (turnos completos usuario + asistente)
         historial = []
-        ultimas_preguntas_usuario = []
         if conversation.messages:
             for msg in conversation.messages:
                 historial.append({
                     "role": msg.role,
                     "content": msg.content
                 })
-                if msg.role == "user":
-                    ultimas_preguntas_usuario.append(msg.content)
 
-        # 3. Detectar cambio de tema
-        temas_nuevos = self._detectar_temas(pregunta)
-        temas_previos = set()
-        if ultimas_preguntas_usuario:
-            for p in ultimas_preguntas_usuario[-3:]:
-                temas_previos |= self._detectar_temas(p)
-
-        es_cambio_tema = (
-            len(temas_nuevos) > 0
-            and len(temas_previos) > 0
-            and not temas_nuevos & temas_previos
-        )
-
-        # 4. Construir query de búsqueda
-        pregunta_lower = pregunta.lower()
+        # 3. Detectar si es meta-pregunta o pregunta dependiente del diálogo (Híbrido Condicional)
+        pregunta_expandida = pregunta
+        pregunta_lower = pregunta_expandida.lower()
         es_meta_pregunta = any(kw in pregunta_lower for kw in [
             "primera pregunta", "primer tema", "qué te pregunté", "te pregunté", "te dije",
             "qué dijimos", "de qué hablabamos", "de qué hablamos", "resumen", "conversado",
             "anteriormente", "historial", "conversación"
         ])
 
-        query_busqueda = pregunta
-        es_pregunta_corta_o_seguimiento = (
-            len(pregunta.split()) < 12 or
-            any(kw in pregunta_lower for kw in ["y si", "y para", "y en", "cuántos", "cuál", "cuáles", "esto", "eso", "llevo", "sobre", "anterior", "mismo", "mismas", "muéstrame", "muestra", "artículo", "sección", "página"])
-        )
+        query_busqueda = pregunta_expandida
+        if historial and not es_meta_pregunta and self._es_pregunta_dependiente(pregunta_expandida, historial):
+            query_busqueda = self.llm_service.reescribir_query_contextual(pregunta_expandida, historial)
 
-        # Solo agregar contexto previo si NO es cambio de tema
-        if (
-            historial
-            and ultimas_preguntas_usuario
-            and es_pregunta_corta_o_seguimiento
-            and not es_meta_pregunta
-            and not es_cambio_tema
-        ):
-            ultimo_contexto = ultimas_preguntas_usuario[-1]
-            query_busqueda = f"{ultimo_contexto} {pregunta}"
+        # 4. Buscar fragmentos relevantes (top_k=15)
+        fragmentos = self.buscar_fragmentos(query_busqueda, top_k=15)
 
-        # 5. Buscar fragmentos relevantes
-        fragmentos = self.buscar_fragmentos(query_busqueda, top_k=12)
+        # Filtrar tablas de contenido o índices para priorizar contenido sustantivo
+        fragmentos_sin_toc = [f for f in fragmentos if not _es_tabla_de_contenido(f.get("content", ""))]
+        if fragmentos_sin_toc:
+            fragmentos = fragmentos_sin_toc
 
-        # 6. Calcular scores combinados (semántico + BM25 léxico)
+        # 5. Calcular scores combinados (semántico + BM25 léxico)
         terminos_query = [
-            w for w in _tokenizar(pregunta)
+            w for w in _tokenizar(query_busqueda)
             if w not in STOPWORDS_ES and len(w) > 2
         ]
 
@@ -550,14 +574,15 @@ class RAGService:
                 if mejor.get("cos_score", 0) >= UMBRAL_COS_FALLBACK:
                     fragmentos_relevantes_raw = [mejor]
 
-            seen_docs = set()
+            seen_chunks = set()
             fragmentos_relevantes = []
             for f in fragmentos_relevantes_raw:
-                doc_name = f["metadata"].get("document_name", "")
-                if doc_name not in seen_docs:
-                    seen_docs.add(doc_name)
+                meta = f.get("metadata", {})
+                chunk_key = (meta.get("document_name"), meta.get("page"), meta.get("chunk_index"))
+                if chunk_key not in seen_chunks:
+                    seen_chunks.add(chunk_key)
                     fragmentos_relevantes.append(f)
-            fragmentos_relevantes = fragmentos_relevantes[:2]
+            fragmentos_relevantes = fragmentos_relevantes[:6]
         else:
             fragmentos_relevantes = []
 
@@ -579,16 +604,15 @@ class RAGService:
         contexto = "\n\n".join(contexto_parts)
         fuentes_str = "\n".join([f"- {f['document']}, p.{f['page']}" for f in fuentes])
 
-        if es_meta_pregunta or es_cambio_tema:
-            historial_para_llm = [{"role": "user", "content": h["content"]} for h in historial if h["role"] == "user"][-4:]
-        else:
-            historial_para_llm = []
+        # Inyectar turnos conversacionales completos (usuario + asistente)
+        historial_para_llm = historial[-6:] if historial else []
 
         return {
             "conversation": conversation,
             "historial": historial,
             "es_meta_pregunta": es_meta_pregunta,
-            "es_cambio_tema": es_cambio_tema,
+            "es_cambio_tema": False,
+            "query_busqueda": query_busqueda,
             "fragmentos_relevantes": fragmentos_relevantes,
             "tiene_fragmentos_relevantes": tiene_fragmentos_relevantes,
             "fuentes": fuentes,
@@ -785,17 +809,17 @@ class RAGService:
 
         bloques = []
 
-        for frag in fragmentos[:2]:
+        # Mostrar los fragmentos más relevantes completos y formateados limpiamente
+        for frag in fragmentos[:5]:
             meta = frag.get("metadata", {})
             doc = meta.get("document_name", "Documento interno")
             pag = meta.get("page", 1)
             sec = meta.get("section", "")
 
-            # Extraer pasaje con fallback seguro y saneamiento de formato
-            pasaje = self._extraer_pasaje_clave(pregunta, frag["content"])
+            # Limpiar y estructurar el fragmento completo conservando listas y articulos
+            pasaje = limpiar_texto_pasaje(frag["content"])
             if not pasaje or len(pasaje.strip()) < 20:
                 pasaje = frag["content"].strip()
-            pasaje = limpiar_texto_pasaje(pasaje)
 
             cita = _formatear_cita(doc, pag, sec)
             bloques.append(f"#### {cita}\n\n{pasaje}")

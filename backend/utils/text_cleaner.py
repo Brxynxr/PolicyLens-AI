@@ -7,32 +7,36 @@ ACRONIMOS_DOC = {"rrhh", "nda", "ia", "rh", "afp", "eps", "arl", "ssi"}
 PALABRAS_ESTRUCTURALES = ("seccion", "articulo", "clausula", "pagina", "capitulo", "anexo", "paragrafo")
 
 
-def sin_tildes(texto: str) -> str:
+def sin_tildes(texto: Optional[str]) -> str:
     """
     Elimina diacríticos y acentos: 'año'->'ano', 'días'->'dias', 'política'->'politica'.
     Permite comparaciones y matching léxico insensible a acentos.
     """
-    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    if not texto:
+        return ""
+    return ''.join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
 
 
-def nombre_documento_legible(nombre_archivo: str) -> str:
+def nombre_documento_legible(nombre_archivo: Optional[str]) -> str:
     """
     Convierte 'manual_rrhh_2026.pdf' en 'Manual RRHH 2026'.
     """
-    base = os.path.splitext(os.path.basename(nombre_archivo))[0]
+    if not nombre_archivo:
+        return "Documento Corporativo"
+    base = os.path.splitext(os.path.basename(str(nombre_archivo)))[0]
     base = re.sub(r"[_\-]+", " ", base).strip()
     palabras = []
     for p in base.split():
-        if p.lower() in ACRONIMOS_DOC:
+        if p and p.lower() in ACRONIMOS_DOC:
             palabras.append(p.upper())
-        elif p.islower():
+        elif p and p.islower():
             palabras.append(p.capitalize())
-        else:
+        elif p:
             palabras.append(p)
-    return " ".join(palabras) or nombre_archivo
+    return " ".join(palabras) or str(nombre_archivo)
 
 
-def formatear_cita(document_name: str, page: Optional[int] = None, section: Optional[str] = None) -> str:
+def formatear_cita(document_name: Optional[str], page: Optional[int] = None, section: Optional[str] = None) -> str:
     """
     Formatea una cita formal corporativa.
     Ejemplo: 'Manual RRHH 2026 — Sección Teletrabajo (Pág. 3)'.
@@ -41,11 +45,12 @@ def formatear_cita(document_name: str, page: Optional[int] = None, section: Opti
     cita = nombre_documento_legible(document_name)
 
     sec = (section or "").strip()
-    sec_norm = sin_tildes(sec).lower()
-    pag_str = sin_tildes(f"pagina {page}").lower()
-    redundante = not sec or sec_norm == "general" or sec_norm == pag_str
+    sec_norm = sin_tildes(sec).lower() if sec else ""
+    pag_str = sin_tildes(f"pagina {page}").lower() if page is not None else ""
+    redundante = not sec or sec_norm == "general" or (pag_str and sec_norm == pag_str)
     if not redundante:
-        primera_palabra = re.split(r"[\s:.]+", sec_norm)[0]
+        partes = re.split(r"[\s:.]+", sec_norm)
+        primera_palabra = partes[0] if partes else ""
         prefijo = "" if primera_palabra in PALABRAS_ESTRUCTURALES else "Sección "
         cita += f" — {prefijo}{sec}"
 
@@ -55,7 +60,7 @@ def formatear_cita(document_name: str, page: Optional[int] = None, section: Opti
     return cita
 
 
-def limpiar_texto_pasaje(texto: str) -> str:
+def limpiar_texto_pasaje(texto: Optional[str]) -> str:
     """
     Sanea y estructura un pasaje recuperado de la base vectorial:
     - Elimina encabezados Markdown (#, ##, ###) en cualquier posición y ruido técnico.
@@ -64,7 +69,7 @@ def limpiar_texto_pasaje(texto: str) -> str:
     - Estructura viñetas y listas para lectura empresarial espaciada.
     """
     if not texto:
-        return texto
+        return ""
 
     t = texto
 
@@ -108,12 +113,23 @@ def limpiar_texto_pasaje(texto: str) -> str:
     # --- Asegurar salto antes de cada viñeta ---
     t = re.sub(r"(?<!\n)\s*•\s*", "\n• ", t)
 
+    # --- Normalizar numerales de listas (ej: '1.\n\nTexto' -> '1. Texto') ---
+    t = re.sub(r"(?<=[.:])\s*(\d{1,3}[\.\)])", r"\n\n\1", t)
+    t = re.sub(r"(?m)^(\s*\d{1,3}[\.\)])\s*\n+", r"\1 ", t)
+
     # --- Marcadores de énfasis residuales aislados ---
     t = re.sub(r"(?<!\*)\*{1,3}(?!\*)", "", t)
 
-    # --- Normalizar saltos triples a dobles y espacios por línea ---
+    # --- Normalizar saltos de línea dentro de párrafos narrativos ---
     t = re.sub(r"[ \t]+", " ", t)
-    t = re.sub(r"\n{3,}", "\n\n", t)
-    t = "\n".join(linea.rstrip() for linea in t.split("\n")).strip()
+    bloques = [b.strip() for b in re.split(r"\n{2,}", t) if b.strip()]
+    bloques_unidos = []
+    for b in bloques:
+        lineas = [l.strip() for l in b.split("\n") if l.strip()]
+        if len(lineas) > 1 and not any(l.startswith(("•", "-", "*")) for l in lineas):
+            bloques_unidos.append(" ".join(lineas))
+        else:
+            bloques_unidos.append("\n".join(lineas))
 
+    t = "\n\n".join(bloques_unidos).strip()
     return t

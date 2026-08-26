@@ -56,11 +56,7 @@ def _extraer_texto_pdf_plano(ruta_archivo: str) -> List[Dict[str, Any]]:
 
 def extraer_texto_pdf(ruta_archivo: str) -> List[Dict[str, Any]]:
     """
-    Extrae el texto de un archivo PDF como Markdown estructurado utilizando pymupdf4llm.
-
-    Conserva encabezados (#, ##), listas y tablas formateadas en Markdown para
-    mejorar la calidad contextual de los embeddings. Si pymupdf4llm no esta
-    disponible o falla, realiza fallback a la extraccion plana de PyMuPDF.
+    Extrae el texto de un archivo PDF de manera ultrarrápida utilizando PyMuPDF nativo (fitz).
 
     :param ruta_archivo: Ruta al archivo PDF.
     :return: Lista de diccionarios con la estructura [{"page": numero_pagina, "text": texto_pagina}].
@@ -72,14 +68,14 @@ def extraer_texto_pdf(ruta_archivo: str) -> List[Dict[str, Any]]:
         raise FileNotFoundError(f"El archivo PDF no existe: {ruta_archivo}")
 
     try:
-        if PYMUPDF4LLM_DISPONIBLE:
-            return _extraer_texto_pdf_markdown(ruta_archivo)
         return _extraer_texto_pdf_plano(ruta_archivo)
     except Exception as e:
         if isinstance(e, FileNotFoundError) or isinstance(e, ValueError):
             raise
-        # Fallback a extraccion plana si el parseo Markdown falla
-        try:
-            return _extraer_texto_pdf_plano(ruta_archivo)
-        except Exception as e2:
-            raise ValueError(f"Error al procesar o extraer texto del archivo PDF '{ruta_archivo}': {str(e2)}")
+        # Fallback a extracción markdown si estuviera disponible
+        if PYMUPDF4LLM_DISPONIBLE:
+            try:
+                return _extraer_texto_pdf_markdown(ruta_archivo)
+            except Exception:
+                pass
+        raise ValueError(f"Error al procesar o extraer texto del archivo PDF '{ruta_archivo}': {str(e)}")

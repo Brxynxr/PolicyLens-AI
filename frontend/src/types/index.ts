@@ -15,6 +15,16 @@ export interface DocumentListResponse {
   documents: Document[]
 }
 
+export interface DocumentStatsResponse {
+  total_documents: number
+  total_chunks: number
+  embedding_model: string
+  embedding_dim: number
+  llm_model: string
+  llm_provider: string
+  chroma_status: string
+}
+
 // Chat types based on backend expected response
 export interface ChatSource {
   document: string

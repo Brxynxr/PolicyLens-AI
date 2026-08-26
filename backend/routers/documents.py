@@ -29,6 +29,31 @@ def _asegurar_directorio():
         os.makedirs(DOCUMENTS_DIR, exist_ok=True)
 
 
+@router.get("/stats")
+def get_document_stats(db: Session = Depends(get_db)):
+    """
+    Retorna métricas reales del almacenamiento RAG, total de chunks y modelos configurados.
+    """
+    docs = listar_documentos(db)
+    try:
+        total_chunks = rag_service.collection.count()
+    except Exception:
+        total_chunks = 0
+
+    base_url = os.getenv("LLM_BASE_URL", "")
+    llm_provider = "Ollama Local" if "localhost" in base_url or "127.0.0.1" in base_url else "Cloud API"
+
+    return {
+        "total_documents": len(docs),
+        "total_chunks": total_chunks,
+        "embedding_model": os.getenv("EMBEDDING_MODEL_LOCAL", "intfloat/multilingual-e5-base"),
+        "embedding_dim": 768,
+        "llm_model": os.getenv("LLM_MODEL", "qwen2.5:3b"),
+        "llm_provider": f"{llm_provider} ({os.getenv('LLM_MODEL', 'qwen2.5:3b')})",
+        "chroma_status": "Conectado"
+    }
+
+
 @router.get("", response_model=DocumentListResponse)
 def get_documents(db: Session = Depends(get_db)):
     """

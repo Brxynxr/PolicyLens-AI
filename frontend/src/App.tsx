@@ -9,14 +9,7 @@ import UsersPage from './pages/UsersPage'
 
 // Layout
 import Layout from './components/Layout'
-
-export function isAuthenticated() {
-  return localStorage.getItem('user_id') !== null
-}
-
-export function isAdmin() {
-  return localStorage.getItem('user_role') === 'admin'
-}
+import { isAuthenticated, isAdmin } from './utils/auth'
 
 function ProtectedRoute() {
   if (!isAuthenticated()) {

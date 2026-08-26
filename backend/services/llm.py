@@ -2,12 +2,15 @@ import json
 import os
 from typing import Optional, List, Dict, Generator
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class LLMService:
     """
     Servicio desacoplado para generar respuestas via LLM.
-    Usa un proveedor externo compatible con OpenAI (NVIDIA NIM, OpenAI, etc.)
+    Usa un proveedor compatible con OpenAI (Ollama local, OpenAI, etc.)
     """
 
     SYSTEM_PROMPT = """Eres PolicyLens AI, un asistente experto en documentos internos de la empresa. Tu trabajo es ayudar a los empleados a encontrar informacion precisa sobre politicas, contratos y reglamentos.
@@ -25,8 +28,72 @@ REGLAS FUNDAMENTALES:
 
     def __init__(self):
         self.api_key = os.getenv("LLM_API_KEY", "")
-        self.base_url = os.getenv("LLM_BASE_URL", "https://integrate.api.nvidia.com/v1")
-        self.model = os.getenv("LLM_MODEL", "meta/llama-3.1-8b-instruct")
+        self.base_url = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
+        self.model = os.getenv("LLM_MODEL", "qwen2.5:3b")
+
+    def reescribir_query_contextual(
+        self,
+        pregunta: str,
+        historial: List[Dict[str, str]]
+    ) -> str:
+        """
+        Reformula una pregunta dependiente o elíptica usando el historial conversacional
+        para generar una consulta de búsqueda semántica autocontenida y precisa.
+        """
+        if not historial:
+            return pregunta
+
+        turnos = []
+        for item in historial[-4:]:
+            rol = "Empleado" if item.get("role") == "user" else "Asistente"
+            turnos.append(f"{rol}: {item.get('content', '')[:180]}")
+
+        historial_str = "\n".join(turnos)
+
+        prompt_reescritura = (
+            f"HISTORIAL DE CONVERSACIÓN RECIENTE:\n{historial_str}\n\n"
+            f"NUEVA PREGUNTA DE SEGUIMIENTO DEL EMPLEADO: \"{pregunta}\"\n\n"
+            f"INSTRUCCIÓN:\n"
+            f"Reformula la nueva pregunta en una sola frase de búsqueda autocontenida que combine el tema de la conversación con la nueva duda del empleado para buscar en las políticas y reglamentos de la empresa.\n"
+            f"Responde ÚNICAMENTE con la consulta reformulada (una sola línea, sin comillas ni explicaciones)."
+        )
+
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Eres un optimizador de consultas de búsqueda documental. Responde exclusivamente con la frase reformulada."
+                },
+                {"role": "user", "content": prompt_reescritura}
+            ],
+            "temperature": 0.0,
+            "max_tokens": 50
+        }
+
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                resp = client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        texto = choices[0].get("message", {}).get("content", "").strip()
+                        texto = texto.strip('"\n\r ')
+                        if texto and len(texto) >= 5:
+                            return texto
+        except Exception:
+            pass
+
+        return pregunta
 
     def generar_respuesta(
         self,
@@ -66,7 +133,7 @@ REGLAS FUNDAMENTALES:
             "stream": True
         }
 
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=120.0) as client:
             with client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
@@ -133,7 +200,7 @@ INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el
             "max_tokens": 1024
         }
 
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=120.0) as client:
             response = client.post(
                 f"{self.base_url}/chat/completions",
                 headers=headers,

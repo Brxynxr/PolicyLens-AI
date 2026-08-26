@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { listarDocumentos, eliminarDocumento, reindexarDocumentos } from '../services/documents'
-import type { Document } from '../types'
+import { listarDocumentos, eliminarDocumento, reindexarDocumentos, obtenerEstadisticasDocumentos } from '../services/documents'
+import type { Document, DocumentStatsResponse } from '../types'
 import FileUpload from '../components/FileUpload'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState<DocumentStatsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -18,9 +19,13 @@ export default function DocumentsPage() {
   const fetchDocs = async () => {
     try {
       setLoading(true)
-      const res = await listarDocumentos()
+      const [res, statsRes] = await Promise.all([
+        listarDocumentos(),
+        obtenerEstadisticasDocumentos()
+      ])
       setDocuments(res.documents)
       setTotal(res.total)
+      if (statsRes) setStats(statsRes)
     } catch {
       setError('Error al recuperar la lista de documentos.')
     } finally {
@@ -134,7 +139,7 @@ export default function DocumentsPage() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight">Gestion de Documentos y Base Vectorial</h1>
           <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">
-            Modelo Activo: BAAI/bge-m3 (1024d) &bull; ChromaDB Store
+            Modelo Activo: {stats?.embedding_model || 'intfloat/multilingual-e5-small'} ({stats?.embedding_dim || 384}d) &bull; ChromaDB Store
           </p>
         </div>
         
@@ -214,7 +219,7 @@ export default function DocumentsPage() {
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Chunks</span>
-            <p className="text-2xl font-black text-slate-900">{total * 3}</p>
+            <p className="text-2xl font-black text-slate-900">{stats?.total_chunks ?? 0}</p>
           </div>
         </div>
 
@@ -227,7 +232,7 @@ export default function DocumentsPage() {
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Estado ChromaDB</span>
             <p className="text-sm font-bold text-[#48BB78] mt-1 flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#48BB78]"></span> Conectado (1024d)
+              <span className="h-2 w-2 rounded-full bg-[#48BB78]"></span> {stats?.chroma_status || 'Conectado'} ({stats?.embedding_dim || 384}d)
             </p>
           </div>
         </div>
@@ -240,7 +245,7 @@ export default function DocumentsPage() {
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inferencia LLM</span>
-            <p className="text-sm font-bold text-slate-800 mt-1">NVIDIA NIM API</p>
+            <p className="text-sm font-bold text-slate-800 mt-1">{stats?.llm_provider || 'Ollama Local (qwen2.5:3b)'}</p>
           </div>
         </div>
       </div>
@@ -252,7 +257,7 @@ export default function DocumentsPage() {
             <h3 className="font-bold text-slate-900 text-sm">Archivos Indexados en el Conocimiento RAG</h3>
             <p className="text-xs text-slate-400">Directorio de origen: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">./documents</code></p>
           </div>
-          <span className="text-xs font-semibold text-slate-500">Chunker: 800 chars / 160 overlap</span>
+          <span className="text-xs font-semibold text-slate-500">Chunker: 1800 chars / 360 overlap</span>
         </div>
 
         {loading ? (

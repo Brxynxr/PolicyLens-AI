@@ -243,7 +243,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
                 />
               </div>
               <p className="text-[10px] text-purple-600 font-medium text-center animate-pulse">
-                Generando embeddings (BGE-m3) e indexando en ChromaDB...
+                Generando embeddings e indexando en base vectorial...
               </p>
             </div>
           )}
