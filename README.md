@@ -101,6 +101,33 @@ La aplicación estará disponible en `http://localhost:5173`.
 
 ---
 
+##  Despliegue Rápido con Docker Compose
+
+Si prefieres ejecutar toda la aplicación contenerizada con un solo comando:
+
+```bash
+# 1. Configurar variables de entorno si aún no lo hiciste
+cp .env.example .env
+
+# 2. Iniciar Ollama en tu máquina anfitriona
+ollama run qwen2.5:3b
+
+# 3. Construir e iniciar los contenedores (Backend + Frontend Nginx con SSE)
+docker compose up --build -d
+```
+
+* **Frontend Web:** `http://localhost:5173`
+* **Backend API & Swagger:** `http://localhost:8000/docs`
+* **Persistencia:** La base de datos vectorial (`chroma_data`), documentos subidos (`documents`) y SQLite (`sql_app.db`) se preservan automáticamente mediante volúmenes en el host.
+* **Caché de Modelos:** Los pesos de Hugging Face se guardan en el volumen Docker `policylens_hf_cache` para no volver a descargarlos.
+
+Para detener los contenedores:
+```bash
+docker compose down
+```
+
+---
+
 ## Estructura del Proyecto
 
 ```
