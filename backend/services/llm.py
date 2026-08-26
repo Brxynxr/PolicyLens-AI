@@ -50,9 +50,10 @@ REGLAS FUNDAMENTALES:
         prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         payload = {
             "model": self.model,
@@ -117,9 +118,10 @@ INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el
         prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         payload = {
             "model": self.model,

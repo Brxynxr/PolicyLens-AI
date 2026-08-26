@@ -233,7 +233,7 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
           {uploading && (
             <div className="space-y-2 mt-4">
               <div className="flex justify-between text-2xs font-semibold text-neutral-500">
-                <span>Procesando archivo {currentFileIndex + 1} de {files.length}...</span>
+                <span className="truncate max-w-[320px]">Procesando {files[currentFileIndex]?.name} ({currentFileIndex + 1}/{files.length})</span>
                 <span>{progress}%</span>
               </div>
               <div className="w-full bg-neutral-200 rounded-full h-1.5 overflow-hidden">
@@ -242,6 +242,9 @@ export default function FileUpload({ onUploadSuccess, onClose }: FileUploadProps
                   style={{ width: `${progress}%` }}
                 />
               </div>
+              <p className="text-[10px] text-purple-600 font-medium text-center animate-pulse">
+                Generando embeddings (BGE-m3) e indexando en ChromaDB...
+              </p>
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import String, Integer, DateTime
+from sqlalchemy import String, Integer, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from backend.database import Base
 
@@ -17,6 +17,7 @@ class Document(Base):
         DateTime, default=lambda: datetime.now(timezone.utc)
     )
     status: Mapped[str] = mapped_column(String, default="processed")  # "pending", "processed", "error"
+    synced: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def __repr__(self) -> str:
         return f"<Document(id={self.id}, name='{self.name}', type='{self.type}', hash='{self.hash[:8]}...')>"

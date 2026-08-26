@@ -76,6 +76,8 @@ def sync_documents(db: Session = Depends(get_db)):
                     nombre_original=filename,
                     db=db
                 )
+                resultado["document"].synced = True
+                db.commit()
                 if resultado["chunks"]:
                     rag_service.indexar_documento(resultado["chunks"])
                 added.append(filename)
@@ -95,6 +97,8 @@ def sync_documents(db: Session = Depends(get_db)):
                     nombre_original=filename,
                     db=db
                 )
+                resultado["document"].synced = True
+                db.commit()
                 if resultado["chunks"]:
                     rag_service.indexar_documento(resultado["chunks"])
                 updated.append(filename)
@@ -107,13 +111,24 @@ def sync_documents(db: Session = Depends(get_db)):
 
             else:
                 # El archivo existe y su hash coincide exactamente
-                unchanged.append(filename)
-                details.append(SyncFileDetail(
-                    filename=filename,
-                    hash=current_hash,
-                    status="unchanged",
-                    message="Documento sin cambios detectados"
-                ))
+                if not getattr(doc_bd, "synced", True):
+                    doc_bd.synced = True
+                    db.commit()
+                    added.append(filename)
+                    details.append(SyncFileDetail(
+                        filename=filename,
+                        hash=current_hash,
+                        status="added",
+                        message="Nuevo documento subido reconocido en sincronización"
+                    ))
+                else:
+                    unchanged.append(filename)
+                    details.append(SyncFileDetail(
+                        filename=filename,
+                        hash=current_hash,
+                        status="unchanged",
+                        message="Documento sin cambios detectados"
+                    ))
 
         except Exception as e:
             errors.append(f"{filename}: {str(e)}")

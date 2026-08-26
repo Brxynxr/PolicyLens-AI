@@ -36,6 +36,11 @@ async def lifespan(app: FastAPI):
         if "user_id" not in columnas:
             conn.execute(text("ALTER TABLE conversations ADD COLUMN user_id INTEGER"))
             conn.commit()
+        
+        doc_cols = [c["name"] for c in sa_inspect(engine).get_columns("documents")]
+        if "synced" not in doc_cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN synced BOOLEAN DEFAULT 0"))
+            conn.commit()
         # Chats antiguos sin dueño se asignan al primer admin para no perderlos
         admin = conn.execute(text("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1")).scalar()
         if admin is not None:

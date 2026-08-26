@@ -228,7 +228,23 @@ export default function ChatPage() {
       {/* 2. HISTORIAL (tarjeta flotante) */}
       <section className="w-72 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col shrink-0 overflow-hidden">
         <div className="p-4 flex-1 flex flex-col overflow-y-auto">
-          <h2 className="font-bold text-slate-900 text-sm mb-6">Tus Consultas</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-bold text-slate-900 text-sm">Tus Consultas</h2>
+            {selectionMode && conversations.length > 0 && (
+              <button
+                onClick={() => {
+                  if (selectedIds.length === conversations.length) {
+                    setSelectedIds([])
+                  } else {
+                    setSelectedIds(conversations.map(c => c.id))
+                  }
+                }}
+                className="text-[11px] font-bold text-[#7C3AED] hover:underline cursor-pointer"
+              >
+                {selectedIds.length === conversations.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+              </button>
+            )}
+          </div>
 
           {listLoading ? (
             <div className="space-y-2">{[1,2,3].map(n => <div key={n} className="p-3 rounded-xl shimmer-skeleton h-16" />)}</div>

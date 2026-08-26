@@ -39,6 +39,7 @@ def guardar_documento(
         doc_principal.size = size
         doc_principal.status = status
         doc_principal.upload_date = datetime.now(timezone.utc)
+        doc_principal.synced = False
 
         # Eliminar cualquier registro duplicado obsoleto con el mismo nombre
         if len(docs_mismo_nombre) > 1:
@@ -61,6 +62,7 @@ def guardar_documento(
         doc_mismo_hash.size = size
         doc_mismo_hash.status = status
         doc_mismo_hash.upload_date = datetime.now(timezone.utc)
+        doc_mismo_hash.synced = False
         db.commit()
         db.refresh(doc_mismo_hash)
         return doc_mismo_hash
@@ -73,7 +75,8 @@ def guardar_documento(
         hash=hash_val,
         size=size,
         status=status,
-        upload_date=datetime.now(timezone.utc)
+        upload_date=datetime.now(timezone.utc),
+        synced=False
     )
     db.add(nuevo_doc)
     db.commit()
