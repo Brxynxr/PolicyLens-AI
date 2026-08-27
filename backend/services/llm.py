@@ -1,8 +1,11 @@
 import json
+import logging
 import os
 from typing import Optional, List, Dict, Generator
 import httpx
 from dotenv import load_dotenv
+
+logger = logging.getLogger("policylens.llm")
 
 load_dotenv()
 
@@ -13,23 +16,47 @@ class LLMService:
     Usa un proveedor compatible con OpenAI (Ollama local, OpenAI, etc.)
     """
 
-    SYSTEM_PROMPT = """Eres PolicyLens AI, un asistente experto en documentos internos de la empresa. Tu trabajo es ayudar a los empleados a encontrar informacion precisa sobre politicas, contratos y reglamentos.
+    SYSTEM_PROMPT = """Eres PolicyLens AI, el asistente oficial de normativas, contratos y políticas internas.
 
-REGLAS FUNDAMENTALES:
-1. Lee TODO el contexto proporcionado ANTES de responder.
-2. Busca la respuesta EXACTA en el contexto. Si los datos estan ahi, citarlos directamente.
-3. NUNCA digas "no se menciona" o "no encontré" si la informacion SI esta en el contexto.
-4. Si la pregunta es sobre vacaciones, permisos, salarios, etc., busca numeros, porcentajes, dias, montos especificos en el contexto.
-5. Si el empleado pide "mostrar el articulo", "mostrar la seccion", muestra el contenido relevante del contexto.
-6. Si realmente no hay informacion en el contexto para responder, di EXACTAMENTE: "No encontré esa información en los documentos disponibles." y NADA MAS. No agregues recomendaciones, contactos, ni sugerencias adicionales.
-7. Cita siempre: documento, pagina y seccion.
-8. Responde en el mismo idioma de la pregunta.
-9. Sé directo y preciso. No des vueltas. No inventes informacion que no este en el contexto."""
+Instrucciones de precisión:
+1. Responde directamente la duda central en la primera oración basándote ÚNICAMENTE en el contexto documental proporcionado.
+2. Si la respuesta contiene requisitos, plazos, condiciones o artículos normativos, preséntalos en una lista con viñetas: • **Concepto clave**: Explicación concisa.
+3. Si la información solicitada no aparece en los documentos, responde exactamente: "No encontré esa información en los documentos disponibles."
+4. Responde siempre en español profesional."""
+
+
 
     def __init__(self):
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.base_url = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
-        self.model = os.getenv("LLM_MODEL", "qwen2.5:3b")
+        self.model = os.getenv("LLM_MODEL", "phi4-mini")
+
+    @staticmethod
+    def _formatear_historial(historial: List[Dict[str, str]], max_turnos: int = 4, max_chars_por_turno: int = 1000) -> str:
+        """
+        Formatea el historial de turnos conversacionales preservando el contenido completo
+        y evitando cortes abruptos a mitad de palabras o números.
+        """
+        if not historial:
+            return ""
+
+        turnos = []
+        for item in historial[-max_turnos:]:
+            rol = "Empleado" if item.get("role") == "user" else "Asistente"
+            contenido = (item.get("content") or "").strip()
+            if not contenido:
+                continue
+
+            if len(contenido) > max_chars_por_turno:
+                recorte = contenido[:max_chars_por_turno]
+                if " " in recorte:
+                    contenido = recorte.rsplit(" ", 1)[0] + "..."
+                else:
+                    contenido = recorte + "..."
+
+            turnos.append(f"{rol}: {contenido}")
+
+        return "\n".join(turnos)
 
     def reescribir_query_contextual(
         self,
@@ -43,12 +70,9 @@ REGLAS FUNDAMENTALES:
         if not historial:
             return pregunta
 
-        turnos = []
-        for item in historial[-4:]:
-            rol = "Empleado" if item.get("role") == "user" else "Asistente"
-            turnos.append(f"{rol}: {item.get('content', '')[:180]}")
-
-        historial_str = "\n".join(turnos)
+        historial_str = self._formatear_historial(historial, max_turnos=4, max_chars_por_turno=1000)
+        if not historial_str:
+            return pregunta
 
         prompt_reescritura = (
             f"HISTORIAL DE CONVERSACIÓN RECIENTE:\n{historial_str}\n\n"
@@ -90,8 +114,8 @@ REGLAS FUNDAMENTALES:
                         texto = texto.strip('"\n\r ')
                         if texto and len(texto) >= 5:
                             return texto
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error al reescribir consulta con LLM: {e}. Se usará la pregunta original.")
 
         return pregunta
 
@@ -128,12 +152,12 @@ REGLAS FUNDAMENTALES:
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.1,
+            "temperature": 0.0,
             "max_tokens": 1024,
             "stream": True
         }
 
-        with httpx.Client(timeout=120.0) as client:
+        with httpx.Client(timeout=180.0) as client:
             with client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
@@ -163,12 +187,9 @@ REGLAS FUNDAMENTALES:
     def _construir_prompt(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
         historial_str = ""
         if historial:
-            turnos = []
-            for item in historial[-6:]:
-                rol = "Empleado" if item.get("role") == "user" else "Asistente"
-                turnos.append(f"{rol}: {item.get('content', '')[:200]}")
-            if turnos:
-                historial_str = "HISTORIAL:\n" + "\n".join(turnos) + "\n\n"
+            formatted = self._formatear_historial(historial, max_turnos=4, max_chars_por_turno=1000)
+            if formatted:
+                historial_str = f"HISTORIAL PREVIO DE LA CONVERSACIÓN:\n{formatted}\n\n"
 
         return f"""{historial_str}CONTEXTO DE LOS DOCUMENTOS INTERNOS:
 ---
@@ -196,11 +217,13 @@ INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.1,
+            "temperature": 0.0,
             "max_tokens": 1024
         }
 
-        with httpx.Client(timeout=120.0) as client:
+
+
+        with httpx.Client(timeout=180.0) as client:
             response = client.post(
                 f"{self.base_url}/chat/completions",
                 headers=headers,

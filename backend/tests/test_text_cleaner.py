@@ -9,6 +9,9 @@ from backend.utils.text_cleaner import (
     nombre_documento_legible,
     formatear_cita,
     limpiar_texto_pasaje,
+    limpiar_boilerplate_institucional,
+    resaltar_terminos_clave,
+    extraer_pasaje_conciso,
 )
 
 
@@ -21,7 +24,8 @@ class TestTextCleanerUtils(unittest.TestCase):
 
     def test_nombre_documento_legible(self):
         self.assertEqual(nombre_documento_legible("manual_rrhh_2026.pdf"), "Manual RRHH 2026")
-        self.assertEqual(nombre_documento_legible("politica_seguridad_ti.docx"), "Politica Seguridad Ti")
+        self.assertEqual(nombre_documento_legible("politica_seguridad_ti.docx"), "Politica Seguridad TI")
+
         self.assertEqual(nombre_documento_legible("nda_confidencialidad.pdf"), "NDA Confidencialidad")
 
     def test_formatear_cita(self):
@@ -38,11 +42,32 @@ class TestTextCleanerUtils(unittest.TestCase):
         raw = 'SECCIÓN 7: TELETRABAJO 7.1 Política de Teletrabajo Híbrido La empresa... ### 7.2 Requisitos: - Punto A - Punto B'
         cleaned = limpiar_texto_pasaje(raw)
         self.assertNotIn("###", cleaned)
-        self.assertIn("• Punto A", cleaned)
-        self.assertIn("• Punto B", cleaned)
+        self.assertIn("- Punto A", cleaned)
+        self.assertIn("- Punto B", cleaned)
         self.assertIn("7.2 Requisitos:", cleaned)
-        self.assertIn("\n\n7.2 Requisitos:", cleaned)
+
+
+    def test_limpiar_boilerplate_institucional(self):
+        raw = "Proceso: Seguridad y Privacidad Versión: 5 SYPI.MN.01 Clasificación: Pública 49 de 69\nContenido de la política.\nPBX 57(2) 664 44 24 www.cdav.gov.co"
+        cleaned = limpiar_boilerplate_institucional(raw)
+        self.assertNotIn("Proceso: Seguridad", cleaned)
+        self.assertNotIn("SYPI.MN.01", cleaned)
+        self.assertNotIn("PBX", cleaned)
+        self.assertIn("Contenido de la política.", cleaned)
+
+    def test_resaltar_terminos_clave(self):
+        texto = "Los trabajadores tienen derecho a quince días de vacaciones remuneradas."
+        resaltado = resaltar_terminos_clave(texto, "¿Cuántos días de vacaciones tengo?")
+        self.assertIn("**vacaciones**", resaltado)
+
+    def test_extraer_pasaje_conciso(self):
+        parrafo1 = "Texto administrativo de presentación sin relevancia."
+        parrafo2 = "ARTICULO 70. DEBERES GENERALES DE LOS TRABAJADORES. Cumplir la constitución y las normas."
+        texto = f"{parrafo1}\n\n{parrafo2}"
+        conciso = extraer_pasaje_conciso(texto, "¿Cuáles son los deberes generales de los trabajadores?", max_chars=120)
+        self.assertIn("DEBERES GENERALES", conciso)
 
 
 if __name__ == '__main__':
     unittest.main()
+

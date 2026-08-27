@@ -1,13 +1,24 @@
+import logging
 import os
 from dotenv import load_dotenv
 
 # Cargar variables de ANTES de cualquier import que use os.getenv()
 load_dotenv()
 
+# Configurar logging estructurado para la aplicación
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("policylens")
+
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from backend.database import engine, Base, SessionLocal
 import backend.models  # noqa: F401
@@ -18,48 +29,40 @@ from backend.routers.auth import router as auth_router
 from backend.routers.users import router as users_router
 from backend.models.user import User
 
+# Limiter global — disponible para los routers via request.app.state.limiter
+limiter = Limiter(key_func=get_remote_address)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Gestión del ciclo de vida de la aplicación FastAPI.
-    Crea automáticamente las tablas en SQLite al iniciar el servidor.
-    Crea el usuario admin por defecto si no existe.
+    Crea las tablas en la BD si no existen e inicializa el usuario administrador.
     """
     Base.metadata.create_all(bind=engine)
-
-    # Migracion ligera: agregar columna user_id a conversations si no existe
-    # (create_all no altera tablas ya creadas en SQLite)
-    from sqlalchemy import text, inspect as sa_inspect
-    with engine.connect() as conn:
-        columnas = [c["name"] for c in sa_inspect(engine).get_columns("conversations")]
-        if "user_id" not in columnas:
-            conn.execute(text("ALTER TABLE conversations ADD COLUMN user_id INTEGER"))
-            conn.commit()
-        
-        doc_cols = [c["name"] for c in sa_inspect(engine).get_columns("documents")]
-        if "synced" not in doc_cols:
-            conn.execute(text("ALTER TABLE documents ADD COLUMN synced BOOLEAN DEFAULT 0"))
-            conn.commit()
-        # Chats antiguos sin dueño se asignan al primer admin para no perderlos
-        admin = conn.execute(text("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1")).scalar()
-        if admin is not None:
-            conn.execute(text("UPDATE conversations SET user_id=:uid WHERE user_id IS NULL"), {"uid": admin})
-            conn.commit()
+    logger.info("Base de datos inicializada correctamente.")
 
     db = SessionLocal()
-    admin = db.query(User).filter(User.role == "admin").first()
-    if not admin:
-        db.add(User(
-            nombre="Admin",
-            email="admin@policylens.com",
-            password="admin123",
-            role="admin"
-        ))
-        db.commit()
-    db.close()
+    try:
+        admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@policylens.com")
+        admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
+        admin = db.query(User).filter(User.role == "admin").first()
+        if not admin:
+            db.add(User(
+                nombre="Admin",
+                email=admin_email,
+                password=admin_password,
+                role="admin"
+            ))
+            db.commit()
+            logger.info(f"Usuario administrador creado por defecto ({admin_email}).")
+    except Exception as e:
+        logger.warning(f"Error al verificar usuario admin en arranque: {e}")
+    finally:
+        db.close()
 
     yield
+
 
 
 app = FastAPI(
@@ -69,6 +72,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Fix #5: Attach rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Configuración de CORS para permitir la conexión desde el Frontend React/Vite
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 origins = [origin.strip() for origin in cors_origins_env.split(",")]
@@ -77,8 +84,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 # Registrar Routers de la API
@@ -87,6 +94,7 @@ app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(documents_router, prefix="/documents", tags=["Documents"])
 app.include_router(sync_router, prefix="/documents", tags=["Sync"])
 app.include_router(chat_router, prefix="/chat", tags=["Chat"])
+
 
 
 @app.get("/")

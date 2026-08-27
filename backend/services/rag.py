@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -6,22 +7,31 @@ from typing import List, Dict, Any, Optional, Generator
 import chromadb
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger("policylens.rag")
+
 from backend.services.embeddings import EmbeddingService
 from backend.services.llm import LLMService
 from backend.models.conversation import Conversation, Message
+
 from backend.utils.text_cleaner import (
     limpiar_texto_pasaje,
+    limpiar_boilerplate_institucional,
     formatear_cita,
     nombre_documento_legible,
     sin_tildes,
+    resaltar_terminos_clave,
+    extraer_pasaje_conciso,
     ACRONIMOS_DOC,
     PALABRAS_ESTRUCTURALES,
 )
 
+
 # Aliases para compatibilidad interna
 _formatear_cita = formatear_cita
 _nombre_documento_legible = nombre_documento_legible
+_limpiar_boilerplate = limpiar_boilerplate_institucional
 _PALABRAS_ESTRUCTURALES = PALABRAS_ESTRUCTURALES
+
 
 try:
     from rank_bm25 import BM25Okapi
@@ -67,84 +77,26 @@ STOPWORDS_ES = {
     'the', 'of', 'and', 'to', 'in', 'is'
 }
 
-# Mapa de temas conocidos del dominio
-TEMAS_CONOCIDOS = {
-    "vacaciones": ["vacaciones", "vacacion", "descanso", "dias libres", "periodo vacacional"],
-    "teletrabajo": ["teletrabajo", "remoto", "home office", "trabajo desde casa"],
-    "contrato": ["contrato", "clausula", "vigencia", "terminacion", "obligaciones"],
-    "seguridad": ["seguridad", "password", "acceso", "datos", "incidente", "politica de seguridad"],
-    "sanciones": ["sancion", "amonestacion", "suspension", "despido", "penalidad"],
-    "permisos": ["permiso", "licencia", "incapacidad", "medico", "enfermedad"],
-    "renuncia": ["renuncia", "renunciar", "desvinculacion", "salida", "baja"],
-    "salario": ["salario", "sueldo", "bono", "compensacion", "pago"],
-}
-
 # --- Parametros de puntuacion y filtrado RAG ---
-# Calibrados para intfloat/multilingual-e5-small (384D):
-# En E5, los fragmentos relevantes in-domain van de cos ~83% a ~94%,
-# y el ruido out-of-domain se ubica en <78%. El corte en 80.5% / 81.5% aisla el ruido perfectamente.
-PESO_COSENO = 0.65              # Peso semantico dentro del score hibrido
-PESO_BM25 = 0.35                # Peso lexico dentro del score hibrido
-UMBRAL_COS_RELEVANTE = 80.5     # Coseno minimo para considerar relevante un fragmento
-UMBRAL_HIBRIDO_RELEVANTE = 81.5  # Score hibrido minimo para considerar relevante un fragmento
-UMBRAL_COS_FALLBACK = 78.5      # Coseno minimo para aceptar el Top-1 cuando nadie pasa umbrales
+# Calibración dinámica según el modelo de embeddings activo
+_MODELO_ACTUAL = os.getenv("EMBEDDING_MODEL", os.getenv("EMBEDDING_MODEL_LOCAL", "qwen3-embedding:0.6b")).lower()
+if "qwen" in _MODELO_ACTUAL:
+    # Calibración para Qwen3-Embedding (1024D con Instruction-Tuning):
+    PESO_COSENO = 0.70              # Peso semántico dentro del score híbrido
+    PESO_BM25 = 0.30                # Peso léxico dentro del score híbrido
+    UMBRAL_COS_RELEVANTE = 45.0     # Coseno mínimo para considerar relevante un fragmento
+    UMBRAL_HIBRIDO_RELEVANTE = 48.0  # Score híbrido mínimo para considerar relevante un fragmento
+    UMBRAL_COS_FALLBACK = 41.0      # Coseno mínimo para aceptar el Top-1 (calibrado para evitar ruido)
+else:
+    # Calibración para E5 (768D / 384D)
+    PESO_COSENO = 0.65
+    PESO_BM25 = 0.35
+    UMBRAL_COS_RELEVANTE = 80.5
+    UMBRAL_HIBRIDO_RELEVANTE = 81.5
+    UMBRAL_COS_FALLBACK = 78.5
+
 METADATA_BOOST = 10.0           # Bonus por coincidencia pregunta <-> nombre de archivo
 
-# Sinonimos de dominio: termino de la pregunta -> tokens esperables en el nombre
-# del documento. Permite que 'incapacidad' o 'bono' apunten a los archivos
-# politica_permisos_licencias / politica_salario_beneficios aunque el nombre del
-# archivo no contenga literalmente esas palabras.
-SINONIMOS_NOMBRE_DOC = {
-    "salario": {"salario"},
-    "salarios": {"salario"},
-    "sueldo": {"salario"},
-    "sueldos": {"salario"},
-    "nomina": {"salario"},
-    "remuneracion": {"salario"},
-    "remunerado": {"salario"},
-    "bono": {"salario"},
-    "bonos": {"salario"},
-    "prima": {"salario"},
-    "aumento": {"salario"},
-    "aumentos": {"salario"},
-    "beneficio": {"salario", "beneficios"},
-    "beneficios": {"salario", "beneficios"},
-    "permiso": {"permisos", "licencias"},
-    "permisos": {"permisos", "licencias"},
-    "licencia": {"permisos", "licencias"},
-    "licencias": {"permisos", "licencias"},
-    "incapacidad": {"permisos", "licencias"},
-    "incapacidades": {"permisos", "licencias"},
-    "enfermedad": {"permisos", "licencias"},
-    "luto": {"permisos", "licencias"},
-    "matrimonio": {"permisos", "licencias"},
-    "paternidad": {"permisos", "licencias"},
-    "confidencial": {"contrato", "confidencialidad"},
-    "confidencialidad": {"contrato", "confidencialidad"},
-    "seguridad": {"seguridad"},
-    "incidente": {"seguridad"},
-    "viaje": {"gastos", "viaje"},
-    "viajes": {"gastos", "viaje"},
-    "viaticos": {"gastos", "viaje"},
-    "gastos": {"gastos", "viaje"},
-    "conducta": {"conducta"},
-    "reglamento": {"reglamento", "interno"},
-    "rrhh": {"manual", "rrhh"},
-}
-
-# Terminos calificadores/superlativos: si aparecen tanto en la pregunta como en
-# una oracion candidata, esta recibe multiplicador x2 en _extraer_pasaje_clave.
-# Formatos sin tildes para coincidir con la salida de _tokenizar.
-CALIFICADORES_BOOST = {
-    "excepcional", "excepcionales",
-    "maximo", "maxima", "maximos", "maximas",
-    "minimo", "minima", "minimos", "minimas",
-    "destacado", "destacada",
-    "superior", "superiores",
-    "optimo", "optima",
-    "prioritario", "prioritaria",
-    "critico", "critica",
-}
 
 
 def _es_tabla_de_contenido(texto: str) -> bool:
@@ -180,14 +132,20 @@ class RAGService:
 
         self.embedding_service = EmbeddingService()
         self.llm_service = LLMService()
-        
+
+        # Fix #10: BM25 in-memory cache — rebuilt only when corpus changes
+        self._bm25_cache = None       # BM25Okapi instance
+        self._bm25_corpus: Optional[List[List[str]]] = None   # tokenized corpus
+
         self.cross_encoder = None
         use_ce = os.getenv("USE_CROSS_ENCODER", "false").lower() == "true"
         if CROSS_ENCODER_DISPONIBLE and use_ce:
             try:
                 self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", max_length=512)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"No se pudo inicializar CrossEncoder: {e}")
                 self.cross_encoder = None
+
 
         # Ruta configurable via CHROMA_PATH; por defecto el almacén productivo
         # del proyecto. Los tests fijan esta variable para aislar su colección.
@@ -200,14 +158,16 @@ class RAGService:
                 name="documents",
                 metadata={"hnsw:space": "cosine"}
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Colección documents no encontrada o con esquema previo, reiniciando: {e}")
             self._reset_coleccion()
 
     def _reset_coleccion(self):
         try:
             self.chroma_client.delete_collection("documents")
-        except Exception:
-            pass
+            logger.info("Colección documents previa eliminada de ChromaDB.")
+        except Exception as e:
+            logger.debug(f"Colección documents no existía al resetear: {e}")
         self.collection = self.chroma_client.get_or_create_collection(
             name="documents",
             metadata={"hnsw:space": "cosine"}
@@ -247,37 +207,109 @@ class RAGService:
 
         return False
 
-    @staticmethod
-    def _detectar_temas(texto: str) -> set:
-        temas = set()
-        texto_lower = texto.lower()
-        for tema, keywords in TEMAS_CONOCIDOS.items():
-            for kw in keywords:
-                if kw in texto_lower:
-                    temas.add(tema)
-                    break
-        return temas
+    @classmethod
+    def _reformular_query_heuristica(cls, pregunta: str, historial: List[Dict[str, str]]) -> str:
+        """
+        Reformula una pregunta dependiente o de seguimiento usando heurísticas rápidas (<1ms)
+        sin llamadas HTTP al LLM:
+        - Extrae términos clave, temas y referencias normativas de los últimos mensajes del usuario.
+        - Combina los términos contextuales esenciales con la nueva pregunta.
+        """
+        if not historial:
+            return pregunta
+
+        # Extraer los últimos mensajes de rol 'user'
+        mensajes_usuario = [m.get("content", "") for m in historial if m.get("role") == "user"]
+        if not mensajes_usuario:
+            return pregunta
+
+        ultimo_user_msg = mensajes_usuario[-1].strip()
+
+        # 1. Detectar menciones normativas específicas (ej. "artículo 53", "cláusula 4", "política de seguridad")
+        articulos_previos = re.findall(
+            r'\b(?:articulo|art|clausula|seccion|politica)\s+\w+\b',
+            _sin_tildes(ultimo_user_msg.lower())
+        )
+
+        # 2. Detectar tokens informativos del turno previo
+        tokens_anteriores = [
+            t for t in _tokenizar(ultimo_user_msg)
+            if t not in STOPWORDS_ES and len(t) > 2
+        ]
+
+        terminos_contexto = []
+        if articulos_previos:
+            terminos_contexto.extend(articulos_previos)
+        if tokens_anteriores:
+            # Tomar los términos sustantivos más informativos (hasta 4)
+            for tok in tokens_anteriores[:4]:
+                if tok not in terminos_contexto:
+                    terminos_contexto.append(tok)
+
+
+        if terminos_contexto:
+            # Filtrar términos que ya estén presentes en la pregunta nueva
+            tokens_actuales = set(_tokenizar(pregunta))
+            tokens_a_agregar = []
+            for item in terminos_contexto:
+                for sub_tok in item.split():
+                    if sub_tok.lower() not in tokens_actuales and sub_tok.lower() not in tokens_a_agregar:
+                        tokens_a_agregar.append(sub_tok)
+
+            if tokens_a_agregar:
+                return f"{' '.join(tokens_a_agregar)} {pregunta}".strip()
+
+        return pregunta
+
+    @classmethod
+    def _detectar_cambio_tema(cls, pregunta: str, historial: List[Dict[str, str]]) -> bool:
+        """
+        Fix #18: Detecta si la nueva pregunta inicia un tema completamente diferente
+        al discutido en los turnos anteriores, para desacoplar el contexto o etiquetarlo.
+        """
+        if not historial or cls._es_pregunta_dependiente(pregunta, historial):
+            return False
+
+        p_clean = _sin_tildes(pregunta.lower().strip())
+
+        # 1. Marcadores explícitos de cambio de tema
+        marcadores_cambio = [
+            "cambiando de tema", "otra pregunta", "cambio de tema", "por otro lado",
+            "pasando a otro tema", "ahora sobre", "tengo otra duda", "una pregunta distinta",
+            "olvida lo anterior", "en otro asunto"
+        ]
+        if any(m in p_clean for m in marcadores_cambio):
+            return True
+
+        # 2. Solapamiento léxico de sustantivos clave (palabras >3 chars no stopwords)
+        mensajes_usuario = [m.get("content", "") for m in historial if m.get("role") == "user"]
+        if not mensajes_usuario:
+            return False
+
+        tokens_pregunta = set(_tokenizar(pregunta)) - STOPWORDS_ES
+        tokens_historial = set()
+        for msg in mensajes_usuario[-2:]:
+            tokens_historial |= (set(_tokenizar(msg)) - STOPWORDS_ES)
+
+        if len(tokens_pregunta) >= 4 and tokens_historial:
+            if len(tokens_pregunta & tokens_historial) == 0:
+                return True
+
+        return False
 
     @staticmethod
     def _boost_metadata(terminos_pregunta: List[str], document_name: str) -> float:
         """
-        Bonus METADATA_BOOST si algun termino relevante de la pregunta (o su
-        sinonimo de dominio) coincide directamente con el nombre del documento.
-        Ej.: pregunta con 'salario'/'bono' -> documento 'politica_salario_beneficios'.
+        Bonus METADATA_BOOST dinámico si algún término relevante de la pregunta
+        coincide directamente con las palabras del nombre del documento.
         """
         if not terminos_pregunta or not document_name:
             return 0.0
 
-        # Los nombres de archivo usan guiones bajos/puntos que \w trata como parte
-        # de la palabra: normalizarlos a espacios para tokenizarlos por separado.
-        # 'politica_salario_beneficios.docx' -> ['politica', 'salario', 'beneficios', 'docx']
         nombre_tokens = set(_tokenizar(re.sub(r"[\._\-]", " ", document_name)))
-        objetivos: set = set()
-        for termino in terminos_pregunta:
-            objetivos.add(termino)
-            objetivos |= SINONIMOS_NOMBRE_DOC.get(termino, set())
-
+        objetivos = set(terminos_pregunta)
         return METADATA_BOOST if objetivos & nombre_tokens else 0.0
+
 
     def indexar_documento(self, chunks: List[Dict[str, Any]]) -> None:
         if not chunks:
@@ -308,6 +340,9 @@ class RAGService:
                 documents=documents,
                 metadatas=metadatas
             )
+            # Fix #10: Corpus changed — invalidate BM25 cache
+            self._bm25_cache = None
+            self._bm25_corpus = None
         except Exception as e:
             if "dimension" in str(e).lower() or "expecting" in str(e).lower():
                 self._reset_coleccion()
@@ -317,6 +352,8 @@ class RAGService:
                     documents=documents,
                     metadatas=metadatas
                 )
+                self._bm25_cache = None
+                self._bm25_corpus = None
             else:
                 raise e
 
@@ -327,8 +364,14 @@ class RAGService:
             )
             if results["ids"]:
                 self.collection.delete(ids=results["ids"])
-        except Exception:
-            pass
+                # Fix #10: Corpus changed — invalidate BM25 cache
+                self._bm25_cache = None
+                self._bm25_corpus = None
+                logger.info(f"Chunks de documento ID={document_id} eliminados de ChromaDB.")
+        except Exception as e:
+            logger.warning(f"Error al eliminar chunks de documento ID={document_id} en ChromaDB: {e}")
+
+
 
     def buscar_fragmentos(self, pregunta: str, top_k: int = 5) -> List[Dict[str, Any]]:
         pregunta_embedding = self.embedding_service.generar_embedding(pregunta)
@@ -507,7 +550,12 @@ class RAGService:
 
         query_busqueda = pregunta_expandida
         if historial and not es_meta_pregunta and self._es_pregunta_dependiente(pregunta_expandida, historial):
-            query_busqueda = self.llm_service.reescribir_query_contextual(pregunta_expandida, historial)
+            query_heuristica = self._reformular_query_heuristica(pregunta_expandida, historial)
+            tokens_h = [w for w in _tokenizar(query_heuristica) if w not in STOPWORDS_ES and len(w) > 2]
+            if len(tokens_h) >= 2:
+                query_busqueda = query_heuristica
+            else:
+                query_busqueda = self.llm_service.reescribir_query_contextual(pregunta_expandida, historial)
 
         # 4. Buscar fragmentos relevantes (top_k=15)
         fragmentos = self.buscar_fragmentos(query_busqueda, top_k=15)
@@ -525,12 +573,16 @@ class RAGService:
 
         bm25_scores: List[float] = [0.0] * len(fragmentos)
         if BM25_DISPONIBLE and terminos_query and fragmentos:
-            corpus = [_tokenizar(frag["content"]) for frag in fragmentos]
-            bm25 = BM25Okapi(corpus)
-            scores_raw = [float(s) for s in bm25.get_scores(terminos_query)]
+            # Fix #10: Use or build cached BM25 index
+            current_corpus = [_tokenizar(frag["content"]) for frag in fragmentos]
+            if self._bm25_cache is None or self._bm25_corpus != current_corpus:
+                self._bm25_corpus = current_corpus
+                self._bm25_cache = BM25Okapi(current_corpus)
+            scores_raw = [float(s) for s in self._bm25_cache.get_scores(terminos_query)]
             max_bm25 = max(scores_raw) if scores_raw else 0.0
             if max_bm25 > 0:
                 bm25_scores = [(s / max_bm25) * 100.0 for s in scores_raw]
+
 
         for i, frag in enumerate(fragmentos):
             cos_sim = round((1 - frag["distance"]) * 100, 1)
@@ -557,8 +609,9 @@ class RAGService:
                     norm_ce = ((ce_scores[i] - min_ce) / ce_range) * 100.0
                     frag["cross_encoder_score"] = round(norm_ce, 1)
                     frag["hybrid_score"] = round((frag["hybrid_score"] * 0.7) + (norm_ce * 0.3), 1)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Error durante re-ranking con CrossEncoder: {e}")
+
 
         fragmentos.sort(key=lambda x: x.get("hybrid_score", 0), reverse=True)
 
@@ -582,7 +635,7 @@ class RAGService:
                 if chunk_key not in seen_chunks:
                     seen_chunks.add(chunk_key)
                     fragmentos_relevantes.append(f)
-            fragmentos_relevantes = fragmentos_relevantes[:6]
+            fragmentos_relevantes = fragmentos_relevantes[:3]
         else:
             fragmentos_relevantes = []
 
@@ -593,25 +646,37 @@ class RAGService:
 
         for frag in fragmentos_relevantes:
             meta = frag["metadata"]
-            contexto_parts.append(f"[{meta.get('document_name', 'Doc')}, página {meta.get('page', '?')}]: {frag['content']}")
+            doc_name = meta.get("document_name", "Documento interno")
+            doc_legible = _nombre_documento_legible(doc_name)
+            pag = meta.get("page", 1)
+            sec = meta.get("section", "")
+
+            header_doc = f"{doc_legible} (Pág. {pag})"
+            if sec and sec.lower() not in ("general", f"pagina {pag}"):
+                header_doc += f" - {sec}"
+
+            # Limpiar boilerplate del contenido antes de agregarlo al contexto
+            contenido_limpio = _limpiar_boilerplate(frag['content'])
+            contexto_parts.append(f"#### {header_doc}\n{contenido_limpio}")
             fuentes.append({
-                "document": meta.get("document_name", "Desconocido"),
-                "page": meta.get("page", 1),
-                "section": meta.get("section", "General"),
-                "content": frag["content"][:500]
+                "document": doc_name,
+                "page": pag,
+                "section": sec or "General",
+                "content": frag["content"]
             })
 
         contexto = "\n\n".join(contexto_parts)
         fuentes_str = "\n".join([f"- {f['document']}, p.{f['page']}" for f in fuentes])
 
         # Inyectar turnos conversacionales completos (usuario + asistente)
-        historial_para_llm = historial[-6:] if historial else []
+        historial_para_llm = historial[-4:] if historial else []
+        es_cambio_tema = self._detectar_cambio_tema(pregunta, historial)
 
         return {
             "conversation": conversation,
             "historial": historial,
             "es_meta_pregunta": es_meta_pregunta,
-            "es_cambio_tema": False,
+            "es_cambio_tema": es_cambio_tema,
             "query_busqueda": query_busqueda,
             "fragmentos_relevantes": fragmentos_relevantes,
             "tiene_fragmentos_relevantes": tiene_fragmentos_relevantes,
@@ -620,6 +685,8 @@ class RAGService:
             "fuentes_str": fuentes_str,
             "historial_para_llm": historial_para_llm,
         }
+
+
 
     def preguntar(
         self,
@@ -768,18 +835,19 @@ class RAGService:
                         yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
 
             # 2. Persistir mensajes en base de datos al finalizar el stream
-            msg_user = Message(
-                conversation_id=conversation.id,
-                role="user",
-                content=pregunta
-            )
-            msg_assistant = Message(
-                conversation_id=conversation.id,
-                role="assistant",
-                content=respuesta_acumulada
-            )
-            db.add_all([msg_user, msg_assistant])
-            db.commit()
+            if respuesta_acumulada.strip():
+                msg_user = Message(
+                    conversation_id=conversation.id,
+                    role="user",
+                    content=pregunta
+                )
+                msg_assistant = Message(
+                    conversation_id=conversation.id,
+                    role="assistant",
+                    content=respuesta_acumulada
+                )
+                db.add_all([msg_user, msg_assistant])
+                db.commit()
 
             # 3. Evento final 'done'
             done_payload = {
@@ -789,12 +857,24 @@ class RAGService:
             }
             yield f"data: {json.dumps(done_payload, ensure_ascii=False)}\n\n"
 
+        except GeneratorExit:
+            # Cliente canceló la conexión / cerró la pestaña
+            logger.info(f"Stream cancelado por el cliente para conversación {conversation.id if 'conversation' in locals() and conversation else 'N/A'}")
+            try:
+                if 'respuesta_acumulada' in locals() and respuesta_acumulada.strip() and 'conversation' in locals() and conversation:
+                    msg_user = Message(conversation_id=conversation.id, role="user", content=pregunta)
+                    msg_assistant = Message(conversation_id=conversation.id, role="assistant", content=respuesta_acumulada)
+                    db.add_all([msg_user, msg_assistant])
+                    db.commit()
+            except Exception:
+                pass
         except Exception as e:
             err_payload = {"type": "error", "error": str(e)}
             yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
         finally:
             if should_close:
                 db.close()
+
 
     def _formatear_respuesta_solo_embeddings(self, pregunta: str, fragmentos: List[Dict[str, Any]]) -> str:
         if not fragmentos:
@@ -809,21 +889,28 @@ class RAGService:
 
         bloques = []
 
-        # Mostrar los fragmentos más relevantes completos y formateados limpiamente
-        for frag in fragmentos[:5]:
+        # Mostrar los top 2 o 3 fragmentos más relevantes de forma concisa y sin saturar
+        for frag in fragmentos[:3]:
             meta = frag.get("metadata", {})
             doc = meta.get("document_name", "Documento interno")
             pag = meta.get("page", 1)
             sec = meta.get("section", "")
 
-            # Limpiar y estructurar el fragmento completo conservando listas y articulos
-            pasaje = limpiar_texto_pasaje(frag["content"])
-            if not pasaje or len(pasaje.strip()) < 20:
-                pasaje = frag["content"].strip()
+            # 1. Limpiar y estructurar el pasaje (eliminando membretes)
+            pasaje_limpio = limpiar_texto_pasaje(frag["content"])
+            if not pasaje_limpio or len(pasaje_limpio.strip()) < 20:
+                pasaje_limpio = frag["content"].strip()
+
+            # 2. Extraer los párrafos y artículos más directos al grano
+            pasaje_conciso = extraer_pasaje_conciso(pasaje_limpio, pregunta, max_chars=750)
+
+            # 3. Resaltar términos clave de la consulta en negrita
+            pasaje_resaltado = resaltar_terminos_clave(pasaje_conciso, pregunta)
 
             cita = _formatear_cita(doc, pag, sec)
-            bloques.append(f"#### {cita}\n\n{pasaje}")
+            bloques.append(f"#### {cita}\n\n{pasaje_resaltado}")
 
         resp = "### Documentación Interna Consultada\n\n"
         resp += "\n\n---\n\n".join(bloques)
         return resp
+

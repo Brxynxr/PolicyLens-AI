@@ -39,14 +39,15 @@ def _dividir_por_oraciones(parrafo: str, tamano_chunk: int) -> List[str]:
     return unidades
 
 
-def dividir_texto(texto: str, tamano_chunk: int = 800, overlap: int = 160) -> List[str]:
+def dividir_texto(texto: str, tamano_chunk: int = 1800, overlap: int = 350) -> List[str]:
     """
     Chunking Semántico / Header-Aware:
 
     1. Preserva bloques por saltos de línea doble ('\\n\\n').
-    2. Modifica el solapamiento para asegurar continuidad en reglas de negocio y títulos.
-    3. Ajustados valores por defecto: tamano_chunk=800, overlap=160 (20%).
+    2. Asegura continuidad en artículos legales, cláusulas y numerales completos.
+    3. Tamaño de chunk optimizado: tamano_chunk=1800, overlap=350 (~20%).
     """
+
     if not texto or not texto.strip():
         return []
 

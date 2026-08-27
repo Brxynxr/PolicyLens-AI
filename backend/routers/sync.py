@@ -1,10 +1,11 @@
 import os
-from typing import List, Dict
-from fastapi import APIRouter, Depends, status
+from typing import List, Dict, Optional
+from fastapi import APIRouter, Depends, status, Query, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models.document import Document
+from backend.models.user import User
 from backend.utils.hashing import calcular_hash
 from backend.services.documents import procesar_documento
 from backend.services.rag import RAGService
@@ -12,9 +13,38 @@ from backend.schemas.document import SyncSummaryResponse, SyncFileDetail, Reinde
 
 router = APIRouter()
 
-DOCUMENTS_DIR = "./documents"
+DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./documents")
 
 rag_service = RAGService()
+
+
+def _require_admin(
+    user_id: Optional[int] = Query(None, description="ID del usuario que realiza la acción"),
+    request: Request = None,
+    db: Session = Depends(get_db)
+) -> User:
+    """Valida que el solicitante sea un administrador activo."""
+    target_id = user_id
+    if target_id is None and request:
+        hdr = request.headers.get("X-User-Id")
+        if hdr and hdr.isdigit():
+            target_id = int(hdr)
+
+    if target_id is not None:
+        user = db.query(User).filter(User.id == target_id, User.is_active == True).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario no encontrado o inactivo.")
+        if user.role != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acción reservada para administradores.")
+        return user
+
+    # Fallback si no se especificó ID explícito: buscar admin activo
+    admin = db.query(User).filter(User.role == "admin", User.is_active == True).first()
+    if admin:
+        return admin
+
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado: se requiere rol de administrador.")
+
 
 
 def _asegurar_directorio():
@@ -24,7 +54,7 @@ def _asegurar_directorio():
 
 
 @router.post("/sync", response_model=SyncSummaryResponse, status_code=status.HTTP_200_OK)
-def sync_documents(db: Session = Depends(get_db)):
+def sync_documents(db: Session = Depends(get_db), _admin: User = Depends(_require_admin)):
     """
     Sincroniza los documentos en la carpeta física ./documents/ con la base de datos SQLite:
     - Escanea archivos .pdf, .docx, .html y .htm.
@@ -152,7 +182,7 @@ def sync_documents(db: Session = Depends(get_db)):
 
 
 @router.post("/reindex", response_model=ReindexSummaryResponse, status_code=status.HTTP_200_OK)
-def reindex_all(db: Session = Depends(get_db)):
+def reindex_all(db: Session = Depends(get_db), _admin: User = Depends(_require_admin)):
     """
     Reindexacion completa del sistema RAG:
     - Vacia la coleccion de ChromaDB.

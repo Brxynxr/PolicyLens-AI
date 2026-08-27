@@ -245,7 +245,7 @@ export default function DocumentsPage() {
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inferencia LLM</span>
-            <p className="text-sm font-bold text-slate-800 mt-1">{stats?.llm_provider || 'Ollama Local (qwen2.5:3b)'}</p>
+            <p className="text-sm font-bold text-slate-800 mt-1">{stats?.llm_provider || 'Ollama Local (phi4-mini)'}</p>
           </div>
         </div>
       </div>
@@ -310,9 +310,19 @@ export default function DocumentsPage() {
                     {new Date(doc.upload_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
                   <td className="py-4 px-6">
-                    <span className="bg-[#48BB78]/10 text-[#48BB78] px-2.5 py-1 rounded-full font-bold text-[10px]">
-                      INDEXADO
-                    </span>
+                    {doc.status === 'processed' || doc.status === undefined ? (
+                      <span className="bg-[#48BB78]/10 text-[#48BB78] px-2.5 py-1 rounded-full font-bold text-[10px]">
+                        INDEXADO
+                      </span>
+                    ) : doc.status === 'error' ? (
+                      <span className="bg-red-100 text-red-500 px-2.5 py-1 rounded-full font-bold text-[10px]">
+                        ERROR
+                      </span>
+                    ) : (
+                      <span className="bg-amber-100 text-amber-600 px-2.5 py-1 rounded-full font-bold text-[10px]">
+                        PENDIENTE
+                      </span>
+                    )}
                   </td>
                   <td className="py-4 px-6 text-right">
                     <button

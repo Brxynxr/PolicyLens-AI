@@ -1,13 +1,18 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(..., min_length=1, max_length=2000)
     conversation_id: Optional[int] = None
     mode: str = "rag"
     user_id: Optional[int] = None
+
+    @field_validator("question")
+    @classmethod
+    def strip_question(cls, v: str) -> str:
+        return v.strip()
 
 
 class SourceItem(BaseModel):

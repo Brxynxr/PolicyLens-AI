@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { 
   listarConversaciones, 
   obtenerConversacion, 
@@ -24,11 +24,57 @@ export default function ChatPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [confirmBulk, setConfirmBulk] = useState(false)
   const [activeSources, setActiveSources] = useState<Record<number, ChatSource[]>>({})
+  // Fix #9: Copy button state
+  const [copiedId, setCopiedId] = useState<number | null>(null)
+  // Fix #12 & #15: Real DB and LLM statuses
+  const [llmStatus, setLlmStatus] = useState<'ok' | 'error' | 'loading'>('loading')
+  const [llmModelName, setLlmModelName] = useState<string>('')
+  const [dbStatus, setDbStatus] = useState<'ok' | 'error' | 'loading'>('loading')
+  const [totalDocs, setTotalDocs] = useState<number>(0)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  const userName = localStorage.getItem('user_name') || 'Joseph'
+  // Fix #16: Safe fallback for userName
+  const userName = localStorage.getItem('user_name') || 'Usuario'
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  // Fix #12 & #15: Poll LLM and DB health every 30s
+  const checkHealth = useCallback(async () => {
+    // 1. LLM Health
+    try {
+      const res = await fetch('/api/chat/health/llm')
+      if (res.ok) {
+        const data = await res.json()
+        setLlmStatus(data.status === 'ok' ? 'ok' : 'error')
+        if (data.model) setLlmModelName(data.model)
+      } else {
+        setLlmStatus('error')
+      }
+    } catch {
+      setLlmStatus('error')
+    }
+
+    // 2. DB / Documents Stats Health
+    try {
+      const resDb = await fetch('/api/documents/stats')
+      if (resDb.ok) {
+        const dataDb = await resDb.json()
+        setDbStatus('ok')
+        setTotalDocs(dataDb.total_documents ?? 0)
+      } else {
+        setDbStatus('error')
+      }
+    } catch {
+      setDbStatus('error')
+    }
+  }, [])
+
+  useEffect(() => {
+    checkHealth()
+    const interval = setInterval(checkHealth, 30000)
+    return () => clearInterval(interval)
+  }, [checkHealth])
+
 
   const suggestions = [
     { 
@@ -402,11 +448,45 @@ export default function ChatPage() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-full">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Base de datos al día
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Fix #12: Real Database Status */}
+              <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                dbStatus === 'ok'
+                  ? 'text-emerald-700 bg-emerald-50 border-emerald-300/80'
+                  : dbStatus === 'error'
+                  ? 'text-red-600 bg-red-50 border-red-200'
+                  : 'text-slate-500 bg-slate-50 border-slate-200'
+              }`}>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${
+                  dbStatus === 'ok' ? 'bg-emerald-500'
+                  : dbStatus === 'error' ? 'bg-red-500'
+                  : 'bg-slate-400 animate-pulse'
+                }`} />
+                <span>
+                  {dbStatus === 'ok' ? `BD: ${totalDocs} doc${totalDocs === 1 ? '' : 's'}` : dbStatus === 'error' ? 'BD: Error' : 'BD: Conectando...'}
+                </span>
+              </div>
+
+              {/* Fix #15: Real LLM Model Status */}
+              <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                llmStatus === 'ok'
+                  ? 'text-purple-700 bg-purple-50 border-purple-300/80'
+                  : llmStatus === 'error'
+                  ? 'text-red-600 bg-red-50 border-red-200'
+                  : 'text-slate-500 bg-slate-50 border-slate-200'
+              }`}>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${
+                  llmStatus === 'ok' ? 'bg-purple-600 animate-pulse'
+                  : llmStatus === 'error' ? 'bg-red-500'
+                  : 'bg-slate-400 animate-pulse'
+                }`} />
+                <span>
+                  {llmStatus === 'ok' ? (llmModelName ? `IA: ${llmModelName}` : 'IA: Lista') : llmStatus === 'error' ? 'IA: No disponible' : 'IA: Verificando...'}
+                </span>
+              </div>
             </div>
           </div>
+
           {mode === 'rag' ? (
             <p className="text-[11px] text-slate-400 font-medium">
               Modo IA: el asistente interpreta tu pregunta, busca en los documentos y redacta una respuesta clara con fuentes.
@@ -469,9 +549,35 @@ export default function ChatPage() {
                         <span className={`text-[11px] font-bold ${isUser ? 'text-slate-300' : 'text-[#7C3AED]'}`}>
                           {isUser ? `Tú (${userName})` : 'Asistente de Políticas'}
                         </span>
-                        <span className="text-[10px] text-slate-400">
-                          {formatTime(msg.created_at)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {/* Fix #9: Copy button — only on assistant messages with content */}
+                          {!isUser && msg.content && msg.id !== streamingMsgId && (
+                            <button
+                              aria-label="Copiar respuesta"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.content).then(() => {
+                                  setCopiedId(msg.id)
+                                  setTimeout(() => setCopiedId(null), 2000)
+                                })
+                              }}
+                              className="text-slate-400 hover:text-[#7C3AED] transition-colors p-0.5 rounded"
+                              title="Copiar respuesta"
+                            >
+                              {copiedId === msg.id ? (
+                                <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+                          <span className="text-[10px] text-slate-400">
+                            {formatTime(msg.created_at)}
+                          </span>
+                        </div>
                       </div>
                       {msg.content ? (
                         isUser ? (
@@ -487,6 +593,7 @@ export default function ChatPage() {
                           <span className="text-xs italic text-slate-400">Generando respuesta...</span>
                         </div>
                       )}
+
                       {!isUser && activeSources[msg.id] && activeSources[msg.id].length > 0 && (() => {
                         const grouped = groupSources(activeSources[msg.id])
                         return (

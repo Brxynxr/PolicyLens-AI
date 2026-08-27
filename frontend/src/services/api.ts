@@ -8,10 +8,20 @@ const api = axios.create({
   },
 })
 
+// Interceptor para inyectar X-User-Id automáticamente si está autenticado
+api.interceptors.request.use((config) => {
+  const userId = localStorage.getItem('user_id')
+  if (userId) {
+    config.headers['X-User-Id'] = userId
+  }
+  return config
+})
+
 // Interceptor para manejar errores de forma consistente
 // Usa la instancia 'api' ya configurada con baseURL '/api' y proxy Vite a http://localhost:8000
 
 api.interceptors.response.use(
+
   (response) => response.data,
   (error) => {
     if (error.response) {

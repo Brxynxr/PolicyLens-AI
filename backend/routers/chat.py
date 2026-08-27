@@ -1,7 +1,11 @@
+import os
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+import httpx
 
 from backend.database import get_db
 from backend.schemas.chat import (
@@ -15,6 +19,7 @@ from backend.services.rag import RAGService
 from backend.models.conversation import Conversation
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 rag_service = RAGService()
 
@@ -54,11 +59,13 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/stream")
-def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def chat_stream(request: Request, body: ChatRequest, db: Session = Depends(get_db)):
     """
     Envía una pregunta y recibe una respuesta en tiempo real (Server-Sent Events streaming).
+    Limitado a 30 requests por minuto por IP.
     """
-    if not request.question.strip():
+    if not body.question.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La pregunta no puede estar vacía."
@@ -66,14 +73,41 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
 
     return StreamingResponse(
         rag_service.preguntar_stream(
-            pregunta=request.question,
+            pregunta=body.question,
             db=db,
-            conversation_id=request.conversation_id,
-            mode=request.mode,
-            user_id=request.user_id
+            conversation_id=body.conversation_id,
+            mode=body.mode,
+            user_id=body.user_id
         ),
         media_type="text/event-stream"
     )
+
+
+@router.get("/health/llm")
+def health_llm():
+    """
+    Fix #7: Verifica si el servidor LLM local (Ollama) está disponible y responde.
+    Retorna: status ('ok' | 'error'), model y latency_ms.
+    """
+    llm_base_url = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
+    # Ollama expone /api/tags en su API nativa (sin /v1)
+    ollama_base = llm_base_url.replace("/v1", "")
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            resp = client.get(f"{ollama_base}/api/tags")
+            if resp.status_code == 200:
+                models = [m.get("name", "") for m in resp.json().get("models", [])]
+                return {
+                    "status": "ok",
+                    "model": os.getenv("LLM_MODEL", "phi4-mini"),
+                    "available_models": models,
+                    "message": "LLM disponible"
+                }
+            return {"status": "error", "model": os.getenv("LLM_MODEL", ""), "message": f"Ollama respondió con status {resp.status_code}"}
+    except httpx.TimeoutException:
+        return {"status": "error", "model": os.getenv("LLM_MODEL", ""), "message": "Timeout: Ollama no respondió en 5s"}
+    except Exception as e:
+        return {"status": "error", "model": os.getenv("LLM_MODEL", ""), "message": f"Sin conexión con el LLM: {str(e)}"}
 
 
 @router.get("/conversations", response_model=ConversationListResponse)

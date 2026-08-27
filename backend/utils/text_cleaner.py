@@ -3,8 +3,9 @@ import re
 import unicodedata
 from typing import Dict, Optional
 
-ACRONIMOS_DOC = {"rrhh", "nda", "ia", "rh", "afp", "eps", "arl", "ssi"}
-PALABRAS_ESTRUCTURALES = ("seccion", "articulo", "clausula", "pagina", "capitulo", "anexo", "paragrafo")
+# Listas para retrocompatibilidad
+ACRONIMOS_DOC = set()
+PALABRAS_ESTRUCTURALES = ()
 
 
 def sin_tildes(texto: Optional[str]) -> str:
@@ -17,30 +18,39 @@ def sin_tildes(texto: Optional[str]) -> str:
     return ''.join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
 
 
+ACRONIMOS_COMUNES = {"rrhh", "rh", "ti", "it", "nda", "sst", "sg-sst", "pol", "sc05", "afp", "eps", "arl", "ssi", "iso"}
+
+
 def nombre_documento_legible(nombre_archivo: Optional[str]) -> str:
     """
-    Convierte 'manual_rrhh_2026.pdf' en 'Manual RRHH 2026'.
+    Convierte de forma dinámica cualquier nombre de archivo en un título legible.
+    Separa camelCase, guiones y guiones bajos preservando acrónimos y mayúsculas.
     """
     if not nombre_archivo:
         return "Documento Corporativo"
     base = os.path.splitext(os.path.basename(str(nombre_archivo)))[0]
+    base = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", base)
+    base = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", base)
     base = re.sub(r"[_\-]+", " ", base).strip()
+
     palabras = []
     for p in base.split():
-        if p and p.lower() in ACRONIMOS_DOC:
+        if not p:
+            continue
+        lower_p = p.lower()
+        if lower_p in ACRONIMOS_COMUNES or (len(p) > 1 and p.isupper()):
             palabras.append(p.upper())
-        elif p and p.islower():
+        elif p.islower():
             palabras.append(p.capitalize())
-        elif p:
+        else:
             palabras.append(p)
     return " ".join(palabras) or str(nombre_archivo)
 
 
 def formatear_cita(document_name: Optional[str], page: Optional[int] = None, section: Optional[str] = None) -> str:
     """
-    Formatea una cita formal corporativa.
+    Formatea dinámicamente una cita corporativa.
     Ejemplo: 'Manual RRHH 2026 — Sección Teletrabajo (Pág. 3)'.
-    Omite la sección cuando es redundante ('Página N' / 'General').
     """
     cita = nombre_documento_legible(document_name)
 
@@ -49,9 +59,7 @@ def formatear_cita(document_name: Optional[str], page: Optional[int] = None, sec
     pag_str = sin_tildes(f"pagina {page}").lower() if page is not None else ""
     redundante = not sec or sec_norm == "general" or (pag_str and sec_norm == pag_str)
     if not redundante:
-        partes = re.split(r"[\s:.]+", sec_norm)
-        primera_palabra = partes[0] if partes else ""
-        prefijo = "" if primera_palabra in PALABRAS_ESTRUCTURALES else "Sección "
+        prefijo = "" if any(sec_norm.startswith(p) for p in ["seccion", "sección", "articulo", "artículo", "clausula", "cláusula", "capitulo", "capítulo", "anexo", "paragrafo", "parágrafo"]) else "Sección "
         cita += f" — {prefijo}{sec}"
 
     if page:
@@ -60,76 +68,142 @@ def formatear_cita(document_name: Optional[str], page: Optional[int] = None, sec
     return cita
 
 
-def limpiar_texto_pasaje(texto: Optional[str]) -> str:
+
+PATRONES_BOILERPLATE = [
+    # Cabeceras de procesos de calidad y versiones
+    r"(?i)Proceso:\s*Seguridad\s*y\s*Privacidad[^\n]*\n?",
+    r"(?i)MANUAL\s*DE\s*POLITICAS\s*DE\s*SEGURIDAD\s*DIGITAL[^\n]*\n?",
+    r"(?i)Versi[oó]n:\s*\d+\s*(?:SYPI\.[A-Z0-9\.]+|[A-Z0-9\._\-]+)?\s*Clasificaci[oó]n:\s*P[uú]blica\s*(?:\d+\s*de\s*\d+)?\n?",
+    r"(?i)Clasificaci[oó]n:\s*P[uú]blica\s*\d+\s*de\s*\d+\n?",
+    r"(?i)P[aá]gina\s*\d+\s*de\s*\d+\n?",
+    # Encabezados institucionales y sedes
+    r"(?i)REGLAMENTO\s*INTERNO\s*DE\s*TRABAJO[^\n]*\n?",
+    r"(?i)CENTRO\s*DE\s*DIAGN[OÓ]STICO\s*AUTOMOTOR\s*DEL\s*VALLE\s*LTDA\.?\n?",
+    r"(?i)Calle\s*\d+.*?(?:Cali|Colombia)[^\n]*\n?",
+    r"(?i)Valle\s*del\s*Cauca,\s*Colombia\.?\n?",
+    r"(?i)Sede\s*electr[oó]nica:\s*www\.[a-z0-9\.\-]+\.[a-z]{2,4}\.?\n?",
+    r"(?i)Correo\s*electr[oó]nico:\s*[a-z0-9\._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}\.?\n?",
+    r"(?i)PBX\s*(?:\d+[\s\(\)\-]*)?\d+\.?\n?",
+    r"(?i)\)?\s*664\s*44\s*24\.?\n?",
+]
+
+
+def limpiar_boilerplate_institucional(texto: str) -> str:
     """
-    Sanea y estructura un pasaje recuperado de la base vectorial:
-    - Elimina encabezados Markdown (#, ##, ###) en cualquier posición y ruido técnico.
-    - Normaliza comillas, guiones y caracteres residuales.
-    - Separa apartados y cláusulas con saltos de línea claros.
-    - Estructura viñetas y listas para lectura empresarial espaciada.
+    Elimina encabezados de calidad, pies de página institucionales, datos de contacto
+    y numeración de páginas que ensucian los pasajes extraídos del PDF.
+    """
+    if not texto:
+        return ""
+    t = texto
+    for patron in PATRONES_BOILERPLATE:
+        t = re.sub(patron, "", t)
+    # Limpiar líneas vacías repetidas
+    t = re.sub(r"\n{3,}", "\n\n", t).strip()
+    return t
+
+
+def resaltar_terminos_clave(texto: str, query: str) -> str:
+    """
+    Resalta en **negrita** los términos relevantes de la búsqueda de forma dinámica.
+    """
+    if not texto or not query:
+        return texto
+
+    # Extraer palabras informativas de la consulta de forma dinámica (palabras >= 4 letras)
+    palabras_query = [
+        p.lower() for p in re.findall(r'\b[a-zA-ZáéíóúÁÉÍÓÚñÑ]{4,}\b', query)
+        if len(p) >= 4
+    ]
+    if not palabras_query:
+        return texto
+
+    resultado = texto
+    for pal in set(palabras_query):
+        patron = rf'(?i)\b({re.escape(pal)})\b(?![^*]*\*\*)'
+        resultado = re.sub(patron, r'**\1**', resultado)
+
+    resultado = re.sub(r'\*{4,}', '**', resultado)
+    return resultado
+
+
+def extraer_pasaje_conciso(texto: str, query: str, max_chars: int = 900) -> str:
+    """
+    Extrae dinámicamente los párrafos más relevantes respecto a la consulta usando coincidencia de términos.
+    """
+    if not texto or len(texto) <= max_chars:
+        return texto
+
+    bloques = [b.strip() for b in re.split(r'\n\s*\n', texto) if b.strip()]
+    if len(bloques) <= 1:
+        return texto[:max_chars].rsplit(" ", 1)[0] + "..." if len(texto) > max_chars else texto
+
+    palabras_query = set(
+        p.lower() for p in re.findall(r'\b[a-zA-ZáéíóúÁÉÍÓÚñÑ]{4,}\b', query)
+        if len(p) >= 4
+    )
+
+    bloques_puntuados = []
+    for b in bloques:
+        b_lower = b.lower()
+        score = sum(1 for p in palabras_query if p in b_lower)
+        bloques_puntuados.append((score, b))
+
+    bloques_puntuados.sort(key=lambda x: x[0], reverse=True)
+
+    bloques_seleccionados = []
+    total_len = 0
+    for score, b in bloques_puntuados:
+        if total_len + len(b) <= max_chars:
+            bloques_seleccionados.append(b)
+            total_len += len(b)
+        else:
+            break
+
+    if not bloques_seleccionados:
+        bloques_seleccionados = bloques[:2]
+
+    return "\n\n".join(bloques_seleccionados)
+
+
+def limpiar_texto_pasaje(texto: Optional[str]) -> str:
+
+    """
+    Sanea un pasaje de texto eliminando membretes y ruido de maquetación,
+    conservando Markdown estándar puro para el frontend.
     """
     if not texto:
         return ""
 
-    t = texto
+    # 1. Limpiar membretes y datos de maquetación institucional
+    t = limpiar_boilerplate_institucional(texto)
 
-    # --- Ruido técnico y ligaduras ---
+    # 2. Ruido técnico y ligaduras
     t = t.replace("\xa0", " ")
     for lig, repl in (("ﬁ", "fi"), ("ﬂ", "fl"), ("ﬀ", "ff"), ("ﬃ", "ffi"), ("ﬄ", "ffl")):
         t = t.replace(lig, repl)
     t = re.sub(r"[\u200b\u200c\u200d\ufeff\u00ad]", "", t)
 
-    # --- Comillas tipográficas y guiones ---
+    # 3. Comillas tipográficas
     t = t.translate(str.maketrans({
         "\u201c": '"', "\u201d": '"', "\u201e": '"', "\u00ab": '"', "\u00bb": '"',
         "\u2018": "'", "\u2019": "'", "\u201a": "'",
         "\u2013": "-", "\u2212": "-",
     }))
-    t = re.sub(r"[▪●◦‣·]", "•", t)
 
-    # --- Eliminar encabezados Markdown (###, ##, #) en cualquier posición ---
+    # 4. Eliminar almohadillas sueltas de títulos crudos
     t = re.sub(r"#{1,6}\s*", "", t)
 
-    # --- Separar títulos y subcláusulas pegadas con saltos de línea ---
-    t = re.sub(r"(?<=[.:!?])\s*(\d+\.\d+(?:\.\d+)?\s+[A-ZÁÉÍÓÚÑ])", r"\n\n**\1", t)
-    t = re.sub(r"(?<=[.:!?])\s*((?:SECCIÓN|ARTÍCULO|CLÁUSULA|CAPÍTULO)\s+\d+:?)", r"\n\n**\1**", t)
+    # 5. Normalizar viñetas a guion estándar Markdown
+    t = re.sub(r"[▪●◦‣·•]", "-", t)
 
-    # --- Proteger paréntesis: evita que '(Pág. 12)' se convierta en viñeta ---
-    _parentesis: Dict[str, str] = {}
-    def _guardar_parentesis(m: re.Match) -> str:
-        clave = f"«P{len(_parentesis)}»"
-        _parentesis[clave] = m.group(0)
-        return clave
-    t = re.sub(r"\([^)]{0,80}\)", _guardar_parentesis, t)
-
-    # --- Viñetas de guiones, asteriscos o literales a) 1) ---
-    t = re.sub(r"(?:^|\s+)[-*]\s+", "\n• ", t)
-    t = re.sub(r"(?<![\w.\d])([a-z]|\d{1,2})\)\s+", "\n• ", t)
-
-    # --- Restaurar paréntesis ---
-    for clave, original in _parentesis.items():
-        t = t.replace(clave, original)
-
-    # --- Asegurar salto antes de cada viñeta ---
-    t = re.sub(r"(?<!\n)\s*•\s*", "\n• ", t)
-
-    # --- Normalizar numerales de listas (ej: '1.\n\nTexto' -> '1. Texto') ---
-    t = re.sub(r"(?<=[.:])\s*(\d{1,3}[\.\)])", r"\n\n\1", t)
-    t = re.sub(r"(?m)^(\s*\d{1,3}[\.\)])\s*\n+", r"\1 ", t)
-
-    # --- Marcadores de énfasis residuales aislados ---
-    t = re.sub(r"(?<!\*)\*{1,3}(?!\*)", "", t)
-
-    # --- Normalizar saltos de línea dentro de párrafos narrativos ---
+    # 6. Normalizar espacios horizontales repetidos
     t = re.sub(r"[ \t]+", " ", t)
-    bloques = [b.strip() for b in re.split(r"\n{2,}", t) if b.strip()]
-    bloques_unidos = []
-    for b in bloques:
-        lineas = [l.strip() for l in b.split("\n") if l.strip()]
-        if len(lineas) > 1 and not any(l.startswith(("•", "-", "*")) for l in lineas):
-            bloques_unidos.append(" ".join(lineas))
-        else:
-            bloques_unidos.append("\n".join(lineas))
 
-    t = "\n\n".join(bloques_unidos).strip()
+    # 7. Limpiar líneas vacías excesivas
+    t = re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
     return t
+
+

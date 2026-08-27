@@ -4,7 +4,7 @@ import io
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import fitz  # PyMuPDF
 import docx
 from sqlalchemy import create_engine
@@ -24,6 +24,8 @@ from backend.main import app
 from backend.utils.html import extraer_texto_html
 from backend.routers import documents as docs_router_mod
 from backend.routers import sync as sync_router_mod
+from backend.models.document import Document
+from backend.models.user import User
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 test_engine = create_engine(
@@ -42,17 +44,31 @@ def override_get_db():
         db.close()
 
 
+def _mock_admin_user():
+    """Returns a mock admin User to bypass _require_admin in tests."""
+    mock_user = MagicMock(spec=User)
+    mock_user.id = 1
+    mock_user.role = "admin"
+    mock_user.is_active = True
+    return mock_user
+
+
 class TestDocumentsAndSync(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         Base.metadata.create_all(bind=test_engine)
         app.dependency_overrides[get_db] = override_get_db
+        # Bypass role check for all document/sync tests
+        app.dependency_overrides[docs_router_mod._require_admin] = _mock_admin_user
+        app.dependency_overrides[sync_router_mod._require_admin] = _mock_admin_user
         cls.client = TestClient(app)
 
     @classmethod
     def tearDownClass(cls):
         Base.metadata.drop_all(bind=test_engine)
+        app.dependency_overrides.pop(docs_router_mod._require_admin, None)
+        app.dependency_overrides.pop(sync_router_mod._require_admin, None)
 
     def setUp(self):
         self.patcher_indexar = patch("backend.services.rag.RAGService.indexar_documento", return_value=None)
