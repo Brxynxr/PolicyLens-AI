@@ -143,6 +143,20 @@ class TestCoreFoundations(unittest.TestCase):
         self.assertEqual(meta_chunks[0]["page"], 5)
         self.assertEqual(meta_chunks[0]["section"], "Vacaciones")
         self.assertEqual(meta_chunks[0]["chunk_index"], 0)
+        self.assertTrue(meta_chunks[0]["content"].startswith("[DOCUMENTO: Manual RRHH | SECCIÓN: Vacaciones | PÁG: 5]"))
+
+        # Prueba de división por encabezados normativos (Artículos y Capítulos)
+        texto_normativo = "CAPÍTULO I: Generalidades.\nARTÍCULO 1. Objeto de la norma.\nARTÍCULO 2. Ámbito de aplicación."
+        chunks_norm = dividir_texto(texto_normativo, tamano_chunk=50)
+        self.assertGreaterEqual(len(chunks_norm), 2)
+        meta_norm = crear_chunks_con_metadata(
+            document_id=2,
+            document_name="reglamento_interno.pdf",
+            page=1,
+            section="",
+            chunks=chunks_norm
+        )
+        self.assertTrue(meta_norm[0]["content"].startswith("[DOCUMENTO: Reglamento Interno | PÁG: 1]"))
 
     def test_extraer_texto_pdf(self):
         """Prueba 4: Generación y extracción de texto de un archivo PDF sintético con PyMuPDF."""

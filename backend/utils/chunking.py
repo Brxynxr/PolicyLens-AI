@@ -1,8 +1,15 @@
 import re
 from typing import List, Dict, Any, Optional
+from backend.utils.text_cleaner import nombre_documento_legible
 
 # Oraciones terminan estrictamente en . ! ? seguidas de espacio o fin de texto (se excluyen dos puntos)
 _RE_ORACION = re.compile(r'[^.!?]+[.!?]+')
+
+# Encabezados normativos que delimitan artículos, capítulos, cláusulas, títulos o parágrafos
+_RE_NORMATIVO = re.compile(
+    r"\n(?=(?:ART[IÍ]CULO|ART\.|CAP[IÍ]TULO|CAP\.|CL[AÁ]USULA|CL\.|SECCI[OÓ]N|SECC\.|T[IÍ]TULO|T[IÍ]T\.|NUMERAL|PAR[AÁ]GRAFO|PAR\.)\b)",
+    re.IGNORECASE
+)
 
 
 def _dividir_por_oraciones(parrafo: str, tamano_chunk: int) -> List[str]:
@@ -43,8 +50,8 @@ def dividir_texto(texto: str, tamano_chunk: int = 1800, overlap: int = 350) -> L
     """
     Chunking Semántico / Header-Aware:
 
-    1. Preserva bloques por saltos de línea doble ('\\n\\n').
-    2. Asegura continuidad en artículos legales, cláusulas y numerales completos.
+    1. Preserva bloques por saltos de línea doble ('\\n\\n') y encabezados normativos (Artículos, Capítulos, etc.).
+    2. Asegura continuidad en artículos legales, cláusulas y numerales completos sin romperlos a mitad de frase.
     3. Tamaño de chunk optimizado: tamano_chunk=1800, overlap=350 (~20%).
     """
 
@@ -59,13 +66,23 @@ def dividir_texto(texto: str, tamano_chunk: int = 1800, overlap: int = 350) -> L
         overlap = max(0, tamano_chunk // 3)
 
     # 1. Fragmentación inicial por párrafos o títulos con salto doble
-    parrafos = [p.strip() for p in re.split(r'\n\s*\n', texto_limpio) if p.strip()]
-    unidades: List[str] = []
-    for parrafo in parrafos:
-        if len(parrafo) <= tamano_chunk:
-            unidades.append(parrafo)
+    parrafos_crudos = [p.strip() for p in re.split(r'\n\s*\n', texto_limpio) if p.strip()]
+
+    # 2. Subdivisión por encabezados normativos (Artículos, Capítulos, etc.) si un bloque los agrupa
+    bloques_estructurales: List[str] = []
+    for parrafo in parrafos_crudos:
+        sub_bloques = [b.strip() for b in _RE_NORMATIVO.split(parrafo) if b.strip()]
+        if sub_bloques:
+            bloques_estructurales.extend(sub_bloques)
         else:
-            unidades.extend(_dividir_por_oraciones(parrafo, tamano_chunk))
+            bloques_estructurales.append(parrafo)
+
+    unidades: List[str] = []
+    for bloque in bloques_estructurales:
+        if len(bloque) <= tamano_chunk:
+            unidades.append(bloque)
+        else:
+            unidades.extend(_dividir_por_oraciones(bloque, tamano_chunk))
 
     if not unidades:
         return [texto_limpio]
@@ -73,7 +90,7 @@ def dividir_texto(texto: str, tamano_chunk: int = 1800, overlap: int = 350) -> L
     def _longitud(partes: List[str]) -> int:
         return sum(len(p) for p in partes) + 2 * (len(partes) - 1) if partes else 0
 
-    # 2. Construcción de Chunks con Overlap Flexible
+    # 3. Construcción de Chunks con Overlap Flexible
     chunks: List[str] = []
     actuales: List[str] = []
 
@@ -120,17 +137,40 @@ def crear_chunks_con_metadata(
     chunks: List[str],
     chunk_offset: int = 0
 ) -> List[Dict[str, Any]]:
-    """ Asigna metadatos estructurados a los chunks generados. """
+    """
+    Asigna metadatos estructurados e inyecta la cabecera contextual
+    en el cuerpo del texto para vectorización de alta precisión (Contextual Chunking).
+    """
     chunks_con_metadata: List[Dict[str, Any]] = []
+    doc_legible = nombre_documento_legible(document_name)
+    pag_num = page if page is not None else 1
+    sec_val = (section or "").strip()
+    if sec_val.lower() in ("general", f"página {pag_num}", f"pagina {pag_num}"):
+        sec_val = ""
+
+    cabecera_items = [f"DOCUMENTO: {doc_legible}"]
+    if sec_val:
+        cabecera_items.append(f"SECCIÓN: {sec_val}")
+    cabecera_items.append(f"PÁG: {pag_num}")
+
+    cabecera = f"[{' | '.join(cabecera_items)}]\n"
 
     for idx, content in enumerate(chunks):
+        texto_chunk = content.strip()
+        # Inyectar cabecera contextual si no está presente
+        if not texto_chunk.startswith("[DOCUMENTO:"):
+            texto_con_contexto = f"{cabecera}{texto_chunk}"
+        else:
+            texto_con_contexto = texto_chunk
+
         chunks_con_metadata.append({
             "document_id": document_id,
             "document_name": document_name,
-            "page": page if page is not None else 1,
+            "page": pag_num,
             "section": section if section else "General",
             "chunk_index": chunk_offset + idx,
-            "content": content
+            "content": texto_con_contexto
         })
 
     return chunks_con_metadata
+

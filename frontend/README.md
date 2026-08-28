@@ -1,32 +1,67 @@
-# React + TypeScript + Vite
+# PolicyLens-AI — Frontend (React 19 + TypeScript + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interfaz web moderna para la consulta inteligente y administración de normativas empresariales de PolicyLens-AI.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Tecnologías Principales
 
-## React Compiler
+* **React 19:** Biblioteca principal de componentes con hooks avanzados y streaming SSE.
+* **TypeScript 5.x:** Tipado estático estricto para modelos, respuestas de API y estado conversacional.
+* **Vite:** Herramienta de compilación ultrarrápida y servidor de desarrollo HMR.
+* **Tailwind CSS v4:** Motor de utilidades CSS para diseño corporativo responsivo.
+* **React Router DOM v7:** Enrutamiento del lado del cliente con rutas protegidas basadas en roles (`ProtectedRoute`).
+* **Axios:** Cliente HTTP para comunicación con la API REST de FastAPI.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## Estructura del Código Fuente (`src/`)
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+src/
+├── components/          # Componentes modulares y reutilizables
+│   ├── ConfirmDialog.tsx# Modal accesible de confirmación para eliminaciones
+│   ├── FileUpload.tsx   # Zona drag-and-drop para carga de .pdf, .docx, .html
+│   ├── FormattedText.tsx# Renderizador semántico Markdown enriquecido
+│   ├── Layout.tsx       # Layout maestro con navegación integrada
+│   ├── Sidebar.tsx      # Barra lateral responsiva por rol (admin/empleado)
+│   ├── SourceCard.tsx   # Tarjeta de fuentes documentales agrupadas
+│   └── UserModal.tsx    # Modal de creación y edición de usuarios
+├── pages/               # Vistas principales
+│   ├── ChatPage.tsx     # Chat conversacional RAG, streaming y monitores
+│   ├── DocumentsPage.tsx# Dashboard de documentos y métricas de ChromaDB
+│   ├── LoginPage.tsx    # Inicio de sesión corporativo
+│   ├── SyncPage.tsx     # Sincronización física por hash SHA-256
+│   └── UsersPage.tsx    # Panel de administración de usuarios (RBAC)
+├── services/            # Clientes de API REST
+│   ├── api.ts           # Instancia base de Axios e interceptores
+│   ├── chat.ts          # Servicios de chat, streaming SSE y conversaciones
+│   ├── documents.ts     # CRUD de documentos y estadísticas
+│   ├── sync.ts          # Sincronización física y reindexación
+│   └── users.ts         # CRUD de usuarios
+├── types/               # Definición de tipos e interfaces TypeScript
+│   └── index.ts
+└── utils/               # Utilidades generales
+    ├── auth.ts          # Gestión de sesión en localStorage
+    └── fixEncoding.ts   # Corrector de secuencias UTF-8 y mojibake
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## Comandos de Desarrollo
+
+```bash
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo (http://localhost:5173)
+npm run dev
+
+# Compilar para producción (Typecheck + Vite build)
+npm run build
+
+# Previsualizar el build de producción
+npm run preview
+```
+
+

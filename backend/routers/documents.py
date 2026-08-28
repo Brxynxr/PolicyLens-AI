@@ -78,11 +78,14 @@ def get_document_stats(db: Session = Depends(get_db)):
     base_url = os.getenv("LLM_BASE_URL", "")
     llm_provider = "Ollama Local" if "localhost" in base_url or "127.0.0.1" in base_url else "Cloud API"
 
+    emb_model = os.getenv("EMBEDDING_MODEL", os.getenv("EMBEDDING_MODEL_LOCAL", "qwen3-embedding:0.6b"))
+    emb_dim = 1024 if "qwen3" in emb_model.lower() else (768 if "base" in emb_model.lower() else 384)
+
     return {
         "total_documents": len(docs),
         "total_chunks": total_chunks,
-        "embedding_model": os.getenv("EMBEDDING_MODEL_LOCAL", "intfloat/multilingual-e5-base"),
-        "embedding_dim": 768,
+        "embedding_model": emb_model,
+        "embedding_dim": emb_dim,
         "llm_model": os.getenv("LLM_MODEL", "phi4-mini"),
         "llm_provider": f"{llm_provider} ({os.getenv('LLM_MODEL', 'phi4-mini')})",
         "chroma_status": "Conectado"

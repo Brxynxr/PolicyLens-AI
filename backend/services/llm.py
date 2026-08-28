@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from typing import Optional, List, Dict, Generator
 import httpx
 from dotenv import load_dotenv
@@ -8,6 +9,24 @@ from dotenv import load_dotenv
 logger = logging.getLogger("policylens.llm")
 
 load_dotenv()
+
+
+def _limpiar_cierre_contradictorio(texto: str) -> str:
+    """
+    Si el LLM genera una respuesta sustantiva pero añade por inercia al final
+    la frase de 'No encontré esa información...', la remueve para evitar contradicciones.
+    """
+    if not texto:
+        return texto
+    frase_fallback = "No encontré esa información en los documentos disponibles."
+    t_strip = texto.strip()
+    if t_strip == frase_fallback or t_strip == f'"{frase_fallback}"':
+        return texto
+
+    patron = r"(?i)\n*\s*(?:\"?No encontré esa información en los documentos disponibles\.?\"?)\s*$"
+    if re.search(patron, t_strip) and len(t_strip) > len(frase_fallback) + 40:
+        return re.sub(patron, "", t_strip).strip()
+    return texto
 
 
 class LLMService:
@@ -18,11 +37,12 @@ class LLMService:
 
     SYSTEM_PROMPT = """Eres PolicyLens AI, el asistente oficial de normativas, contratos y políticas internas.
 
-Instrucciones de precisión:
-1. Responde directamente la duda central en la primera oración basándote ÚNICAMENTE en el contexto documental proporcionado.
-2. Si la respuesta contiene requisitos, plazos, condiciones o artículos normativos, preséntalos en una lista con viñetas: • **Concepto clave**: Explicación concisa.
-3. Si la información solicitada no aparece en los documentos, responde exactamente: "No encontré esa información en los documentos disponibles."
-4. Responde siempre en español profesional."""
+Directrices de respuesta:
+1. Responde directamente la duda central en la primera oración basándote exclusivamente en el contexto documental proporcionado.
+2. Si la respuesta contiene deberes, requisitos, plazos, condiciones o artículos normativos, preséntalos en una lista con viñetas: • **Concepto clave**: Explicación concisa.
+3. Si el contexto documental no contiene información para responder la pregunta, responde exactamente: "No encontré esa información en los documentos disponibles."
+4. Si respondes la pregunta con el contexto disponible, NO agregues al final frases de que no encontraste información.
+5. Responde siempre en español profesional."""
 
 
 
@@ -200,7 +220,7 @@ FUENTES: {fuentes if fuentes else "N/A"}
 
 PREGUNTA DEL EMPLEADO: {pregunta}
 
-INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el contexto. Busca la respuesta EXACTA en el contexto. Si los datos estan ahi, citarlos directamente. Si realmente no esta, indica que no encontraste la informacion en los documentos disponibles."""
+INSTRUCCIÓN: Responde de forma clara y directa a la pregunta del empleado utilizando exclusivamente el contexto documental anterior. Organiza los puntos normativos en viñetas ordenadas."""
 
     def _generar_api(self, pregunta: str, contexto: str, fuentes: Optional[str], historial: Optional[List[Dict[str, str]]]) -> str:
         prompt = self._construir_prompt(pregunta, contexto, fuentes, historial)
@@ -221,8 +241,6 @@ INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el
             "max_tokens": 1024
         }
 
-
-
         with httpx.Client(timeout=180.0) as client:
             response = client.post(
                 f"{self.base_url}/chat/completions",
@@ -235,5 +253,7 @@ INSTRUCCION: Si la pregunta es un seguimiento, usa el historial para entender el
         choices = data.get("choices", [])
         if not choices:
             return "No se obtuvo respuesta del modelo LLM."
-        return choices[0].get("message", {}).get("content", "") or "Respuesta vacía del modelo LLM."
+        raw_text = choices[0].get("message", {}).get("content", "") or "Respuesta vacía del modelo LLM."
+        return _limpiar_cierre_contradictorio(raw_text)
+
 

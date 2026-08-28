@@ -7,69 +7,102 @@ interface FormattedTextProps {
   className?: string
 }
 
-// Limpia dinámicamente nombres de archivos a títulos humanos legibles
+// ---------------------------------------------------------------------------
+// Pre-procesador: convierte texto plano con viñetas "•" en Markdown real
+// El LLM a veces devuelve: "Texto intro:\n• Item 1. • Item 2. • Item 3."
+// o todo en un mismo párrafo. Esta función lo transforma en listas Markdown.
+// ---------------------------------------------------------------------------
+function normalizarBullets(texto: string): string {
+  // Caso 1: la línea contiene múltiples "•" inline (todo en un bloque)
+  // Detectamos si hay al menos 2 "•" en la misma línea → la explosionamos
+  const lineas = texto.split('\n')
+  const lineasProcesadas = lineas.map((linea) => {
+    const conteo = (linea.match(/•/g) || []).length
+    if (conteo >= 2) {
+      // Dividir por "•" y reconstruir como lista Markdown
+      const partes = linea.split('•').map((p) => p.trim()).filter(Boolean)
+      // La primera parte puede ser texto introductorio (sin viñeta)
+      const intro = partes[0]
+      const items = partes.slice(1)
+      if (items.length === 0) return linea
+      const listaMarkdown = items.map((item) => `- ${item}`).join('\n')
+      return intro ? `${intro}\n\n${listaMarkdown}` : listaMarkdown
+    }
+    // Caso 2: línea empieza con "•" → convertirla a item Markdown
+    if (/^\s*•\s+/.test(linea)) {
+      return linea.replace(/^\s*•\s+/, '- ')
+    }
+    return linea
+  })
+  return lineasProcesadas.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Limpia nombres de archivos a títulos legibles
+// ---------------------------------------------------------------------------
 function formatearNombreDocumento(nombreArchivo: string): string {
   if (!nombreArchivo) return 'Documento Interno'
   let base = nombreArchivo.replace(/\.(pdf|docx|html|htm)$/i, '').trim()
-
-  // Extraer versiones finales como -v5 o _v2 -> (v5)
   let version = ''
   const vMatch = base.match(/[-_]v(\d+.*)$/i)
   if (vMatch) {
     version = ` (v${vMatch[1]})`
     base = base.slice(0, vMatch.index)
   }
-
-  // Separar camelCase
   base = base
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
     .replace(/[-_]+/g, ' ')
     .trim()
-
   const palabras = base.split(/\s+/).map((palabra) => {
     if (!palabra) return ''
-    // Si la palabra ya está en mayúsculas (ej. RRHH, SST, ISO), preservarla
-    if (palabra.length > 1 && palabra === palabra.toUpperCase()) {
-      return palabra
-    }
+    if (palabra.length > 1 && palabra === palabra.toUpperCase()) return palabra
     return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase()
   })
-
   return palabras.join(' ') + version
 }
 
-
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
 export default function FormattedText({ content, isStreaming, className = '' }: FormattedTextProps) {
-  const textoLimpio = limpiarEncoding(content)
+  let textoLimpio = limpiarEncoding(content)
   if (!textoLimpio) return null
+
+  // Guardrail: elimina la frase de fallback si la respuesta ya es sustancial
+  const fraseFallback = 'No encontré esa información en los documentos disponibles.'
+  if (textoLimpio.trim() !== fraseFallback && textoLimpio.length > fraseFallback.length + 50) {
+    textoLimpio = textoLimpio.replace(
+      /\n*\s*(?:"?No encontré esa información en los documentos disponibles\.?"?)\s*$/i,
+      ''
+    )
+  }
+
+  // Pre-procesar bullets planos → Markdown real
+  textoLimpio = normalizarBullets(textoLimpio)
 
   return (
     <div className={`prose prose-slate max-w-none text-sm md:text-base leading-relaxed text-slate-700 font-normal ${className}`}>
       <ReactMarkdown
         components={{
-          // Párrafos
+          // --- Párrafos ---
           p: ({ children }) => (
             <p className="mb-3 last:mb-0 leading-relaxed text-slate-700">
               {children}
             </p>
           ),
 
-          // Negritas destacadas
+          // --- Negritas ---
           strong: ({ children }) => (
-            <strong className="font-bold text-slate-900">
-              {children}
-            </strong>
+            <strong className="font-bold text-slate-900">{children}</strong>
           ),
 
-          // Cursivas
+          // --- Cursivas ---
           em: ({ children }) => (
-            <em className="italic text-slate-700">
-              {children}
-            </em>
+            <em className="italic text-slate-600">{children}</em>
           ),
 
-          // Encabezados
+          // --- Encabezados ---
           h1: ({ children }) => (
             <h1 className="text-lg font-extrabold text-slate-900 mt-4 mb-2 pb-1 border-b border-slate-200 flex items-center gap-2">
               <span className="w-1.5 h-4 rounded-full bg-[#7C3AED] shrink-0" />
@@ -90,9 +123,14 @@ export default function FormattedText({ content, isStreaming, className = '' }: 
           ),
           h4: ({ children }) => {
             const rawText = String(children || '')
-            // Detectar si es cabecera de documento (ej: #### Manual RRHH (Pág. 5))
             const docMatch = rawText.match(/^(.+?)(?:\s*\(P[aá]g\.?\s*(\d+)\))?$/i)
-            if (docMatch && (rawText.toLowerCase().includes('.pdf') || rawText.toLowerCase().includes('.docx') || rawText.toLowerCase().includes('pág') || rawText.toLowerCase().includes('sección'))) {
+            if (
+              docMatch &&
+              (rawText.toLowerCase().includes('.pdf') ||
+                rawText.toLowerCase().includes('.docx') ||
+                rawText.toLowerCase().includes('pág') ||
+                rawText.toLowerCase().includes('sección'))
+            ) {
               const docName = docMatch[1].trim()
               const pageNum = docMatch[2]
               return (
@@ -118,34 +156,36 @@ export default function FormattedText({ content, isStreaming, className = '' }: 
             )
           },
 
-          // Listas con viñetas
+          // --- Lista con viñetas (ul / li) ---
+          // Usamos viñeta visual personalizada alineada al texto multilínea
           ul: ({ children }) => (
-            <ul className="space-y-1.5 my-2.5 pl-1 list-none">
+            <ul className="mt-2 mb-4 space-y-2 pl-0 list-none">
               {children}
             </ul>
           ),
           li: ({ children }) => (
-            <li className="flex items-start gap-2.5 text-slate-700 leading-relaxed">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] mt-2 shrink-0" />
-              <div className="flex-1">{children}</div>
+            <li className="flex items-start gap-3 text-slate-700 leading-relaxed">
+              {/* Viñeta visual: punto púrpura, alineado con la primera línea */}
+              <span className="mt-[6px] w-2 h-2 rounded-full bg-[#7C3AED] shrink-0 ring-2 ring-purple-100" />
+              <span className="flex-1 text-sm md:text-base">{children}</span>
             </li>
           ),
 
-          // Listas numeradas
+          // --- Lista numerada ---
           ol: ({ children }) => (
-            <ol className="space-y-1.5 my-2.5 pl-1 list-decimal list-inside text-slate-700">
+            <ol className="mt-2 mb-4 space-y-2 pl-0 list-none counter-reset-item">
               {children}
             </ol>
           ),
 
-          // Citas y Callouts
+          // --- Citas ---
           blockquote: ({ children }) => (
             <blockquote className="border-l-4 border-[#7C3AED] bg-purple-50/50 px-4 py-2.5 rounded-r-xl text-slate-700 italic text-sm my-2">
               {children}
             </blockquote>
           ),
 
-          // Tablas Markdown
+          // --- Tablas ---
           table: ({ children }) => (
             <div className="my-3 overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
               <table className="min-w-full text-left text-xs sm:text-sm border-collapse">
@@ -159,22 +199,16 @@ export default function FormattedText({ content, isStreaming, className = '' }: 
             </thead>
           ),
           tbody: ({ children }) => (
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {children}
-            </tbody>
+            <tbody className="divide-y divide-slate-100 text-slate-700">{children}</tbody>
           ),
           th: ({ children }) => (
-            <th className="px-4 py-2.5 font-bold text-slate-800 whitespace-nowrap">
-              {children}
-            </th>
+            <th className="px-4 py-2.5 font-bold text-slate-800 whitespace-nowrap">{children}</th>
           ),
           td: ({ children }) => (
-            <td className="px-4 py-2.5 text-slate-700 leading-relaxed align-top">
-              {children}
-            </td>
+            <td className="px-4 py-2.5 text-slate-700 leading-relaxed align-top">{children}</td>
           ),
 
-          // Código inline y bloques
+          // --- Código ---
           code: ({ children }) => (
             <code className="px-1.5 py-0.5 rounded bg-purple-50 text-[#7C3AED] font-mono text-xs border border-purple-200/60 font-semibold">
               {children}
@@ -186,18 +220,17 @@ export default function FormattedText({ content, isStreaming, className = '' }: 
             </pre>
           ),
 
-          // Línea divisoria
+          // --- Separador ---
           hr: () => <hr className="border-t border-slate-200 my-3" />,
         }}
       >
         {textoLimpio}
       </ReactMarkdown>
 
+      {/* Cursor de streaming */}
       {isStreaming && (
-        <span className="inline-block w-1.5 h-4 ml-1 bg-[#7C3AED] animate-pulse align-middle" />
+        <span className="inline-block w-1.5 h-4 ml-1 bg-[#7C3AED] animate-pulse align-middle rounded-sm" />
       )}
     </div>
   )
 }
-
-

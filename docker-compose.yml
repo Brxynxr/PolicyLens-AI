@@ -12,12 +12,11 @@ services:
       - LLM_API_KEY=${LLM_API_KEY:-ollama}
       - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
       - LLM_MODEL=${LLM_MODEL:-phi4-mini}
-      - EMBEDDING_MODEL_LOCAL=${EMBEDDING_MODEL_LOCAL:-intfloat/multilingual-e5-base}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-qwen3-embedding:0.6b}
     volumes:
       - ./chroma_data:/app/chroma_data
       - ./documents:/app/documents
       - ./sql_app.db:/app/sql_app.db
-      - hf_cache:/root/.cache/huggingface
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -33,6 +32,3 @@ services:
       - backend
     restart: unless-stopped
 
-volumes:
-  hf_cache:
-    name: policylens_hf_cache
